@@ -1,0 +1,4 @@
+<Program> -> <S>
+            <S> -> <A> b | c <B>
+            <A> -> a <A> | c
+            <B> -> b
