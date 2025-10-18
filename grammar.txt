@@ -1,4 +1,46 @@
-<Program> -> <S>
-            <S> -> <A> b | c <B>
-            <A> -> a <A> | c
-            <B> -> b
+<Program> -> <DeclarationList>
+<DeclarationList> -> <Declaration> <DeclarationList>
+<Declaration> -> <FunctionDecl>
+<VarDecl> -> <Type> <Identifier> <VarDeclRest> ";"
+<VarDeclRest> -> "=" <Expression> | ε
+<Type> -> "int" | "float" | "double"
+<FunctionDecl> -> <Type> <Identifier> "(" <ParamList> ")" <CompoundStmt>
+<ParamList> -> <Param> <ParamListRest> | ε
+<ParamListRest> -> "," <Param> <ParamListRest>
+<Param> -> <Type> <Identifier>
+<ClassDecl> -> "class" <Identifier> "{" <MemberList> "}" ";"
+<MemberList> -> <Member> <MemberList>
+<Member> -> <VarDecl>
+<CompoundStmt> -> "{" <StmtList> "}"
+<StmtList> -> <Statement> <StmtList>
+<Statement> -> <IfStmt>
+<IfStmt> -> "if" "(" <Expression> ")" <Statement> <ElsePart>
+<ElsePart> -> "else" <Statement>
+<WhileStmt> -> "while" "(" <Expression> ")" <Statement>
+<ReturnStmt> -> "return" <Expression> ";"
+<ExpressionStmt> -> <Expression> ";"
+<Expression> -> <AssignmentExpr>
+<AssignmentExpr> -> <LogicalOrExpr> <AssignOp> <AssignmentExpr>
+<AssignOp> -> "=" | "+=" | "-=" | "*=" | "/="
+<LogicalOrExpr> -> <LogicalAndExpr> <LogicalOrRest>
+<LogicalOrRest> -> " | | " <LogicalAndExpr> <LogicalOrRest>
+<LogicalAndExpr> -> <EqualityExpr> <LogicalAndRest>
+<LogicalAndRest> -> "&&" <EqualityExpr> <LogicalAndRest>
+<EqualityExpr> -> <RelationalExpr> <EqRest>
+<EqRest> -> "==" <RelationalExpr> <EqRest>
+<RelationalExpr> -> <AddExpr> <RelRest>
+<RelRest> -> "<" <AddExpr> <RelRest>
+<AddExpr> -> <Term> <AddRest>
+<AddRest> -> "+" <Term> <AddRest>
+<Term> -> <Factor> <TermRest>
+<TermRest> -> "*" <Factor> <TermRest>
+<Factor> -> <Primary> | "-" <Factor> | "!" <Factor>
+<Primary> -> <Literal>
+<FunctionCall> -> <Identifier> "(" <ArgList> ")"
+<ArgList> -> <Expression> <ArgListRest>
+<ArgListRest> -> "," <Expression> <ArgListRest> | ε
+<Literal> -> <IntegerLiteral>
+<IntegerLiteral> -> TOK_NUMBER
+<FloatLiteral> -> TOK_NUMBER
+<StringLiteral> -> TOK_STRING
+<Identifier> -> TOK_IDENTIFIER
