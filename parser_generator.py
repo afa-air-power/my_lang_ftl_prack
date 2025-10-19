@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 Процедурный генератор рекурсивного спуска по формальной грамматике.
-Создает:
+Создаёт:
   - out/parser.hpp
   - out/parser.cpp
   - out/keywords.hpp
   - out/system_reserved_identifiers.txt
-  - out/token_mapping.txt
 """
 
 import re
@@ -19,7 +18,6 @@ from textwrap import dedent
 # ================================================================
 # 1. Очистка грамматики
 # ================================================================
-
 class GrammarCleaner:
     def __init__(self, filename):
         self.filename = filename
@@ -64,7 +62,6 @@ class GrammarCleaner:
 # ================================================================
 # 2. Разбор грамматики
 # ================================================================
-
 class FormalGrammarParser:
     def __init__(self, filename):
         self.filename = filename
@@ -105,7 +102,6 @@ class FormalGrammarParser:
 # ================================================================
 # 3. Генерация C++ кода
 # ================================================================
-
 class CppRecursiveDescentGen:
     def __init__(self, rules, terminals):
         self.rules = rules
@@ -118,8 +114,9 @@ class CppRecursiveDescentGen:
         self._write_keywords_hpp()
         self._write_parser_hpp()
         self._write_parser_cpp()
-        self._write_token_mapping()
+        print("✅ Генерация завершена: parser.cpp/hpp и keywords.hpp созданы.")
 
+    # ---------- system_reserved_identifiers.txt ----------
     def _write_reserved_list(self):
         with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:
             for t in self.terminals:
@@ -137,18 +134,19 @@ class CppRecursiveDescentGen:
             "// Автоматически сгенерированные типы токенов",
             "// =============================================================",
             "",
-            "enum class TokenType {",
+            "enum class TokenType {"
             "    KEYWORD,",
             "    IDENTIFIER,",
             "    NUMBER,",
             "    STRING,",
             "    SYMBOL,",
-            ""
+            "",
+
         ]
 
         seen = set()
         for t in self.terminals:
-            cname = self.clean_name(t, register=False)
+            cname = self.clean_name(t, is_nonterminal=False)
             if cname in seen:
                 continue
             seen.add(cname)
@@ -161,11 +159,8 @@ class CppRecursiveDescentGen:
         lines.append("inline std::string token_to_string(TokenType t) {")
         lines.append("    switch(t) {")
 
-        for base in ["KEYWORD", "IDENTIFIER", "NUMBER", "STRING", "SYMBOL"]:
-            lines.append(f'        case TokenType::{base}: return "{base}";')
-
         for t in self.terminals:
-            cname = self.clean_name(t, register=False)
+            cname = self.clean_name(t, is_nonterminal=False)
             escaped = t.replace('"', '\\"')
             lines.append(f'        case TokenType::{cname}: return "{escaped}";')
 
@@ -198,7 +193,7 @@ class CppRecursiveDescentGen:
         ]
 
         for head in self.rules:
-            lines.append(f"void {self.clean_name(head)}();")
+            lines.append(f"void {self.clean_name(head, is_nonterminal=True)}();")
 
         lines.append("\n} // namespace parser")
 
@@ -227,7 +222,7 @@ class CppRecursiveDescentGen:
                 gc();
                 std::cout << "Parsing file: " << path << std::endl;
                 try {
-                    TOK_PROGRAM(); // корень грамматики
+                    TOK_PROGRAM();
                     std::cout << "✅ Parsing completed successfully." << std::endl;
                 } catch (const ParseError& e) {
                     std::cerr << "❌ Parse failed: " << e.what() << std::endl;
@@ -260,7 +255,7 @@ class CppRecursiveDescentGen:
             f.write(header + "\n\n".join(functions) + footer)
 
     def _gen_function(self, head):
-        name = self.clean_name(head)
+        name = self.clean_name(head, is_nonterminal=True)
         lines = [f"void {name}() {{", f"    CallContext ctx(\"{name}\");"]
         alts = self.rules[head]
 
@@ -274,9 +269,9 @@ class CppRecursiveDescentGen:
             lines.append(f"    {prefix} ({cond}) {{")
             for sym in alt:
                 if self._is_nonterm(sym):
-                    lines.append(f"        {self.clean_name(sym)}();")
+                    lines.append(f"        {self.clean_name(sym, is_nonterminal=True)}();")
                 else:
-                    token = self.clean_name(sym)
+                    token = self.clean_name(sym, is_nonterminal=False)
                     lines.append(
                         f"        if (current != TokenType::{token}) "
                         f"syntax_error(\"expected {token} in {name}\");"
@@ -291,67 +286,57 @@ class CppRecursiveDescentGen:
     def _make_condition(self, alt):
         for sym in alt:
             if not self._is_nonterm(sym):
-                return f"current == TokenType::{self.clean_name(sym)}"
+                return f"current == TokenType::{self.clean_name(sym, is_nonterminal=False)}"
         return "true"
 
     @staticmethod
     def _is_nonterm(sym):
         return sym.startswith("<") and sym.endswith(">")
 
-    # === исправленный clean_name ===
-    def clean_name(self, sym, register=True):
-        s = sym.strip("<>\"")
+    # ---------- clean_name ----------
+    @staticmethod
+    def clean_name(sym, is_nonterminal=False):
+        s = sym.strip()
+
+        # если это нетерминал — правило грамматики
+        if is_nonterminal or (s.startswith("<") and s.endswith(">")):
+            s = s.strip("<>")
+            return "TOK_" + re.sub(r'[^A-Za-z0-9_]+', '_', s.upper())
+
+        # терминал
+        s = s.strip('"')
+
         special_map = {
-            "!=": "TOK_NEQ",
-            "==": "TOK_EQEQ",
-            "&&": "TOK_ANDAND",
-            "||": "TOK_OROR",
-            "<=": "TOK_LEQ",
-            ">=": "TOK_GEQ",
-            "->": "TOK_ARROW",
-            "=>": "TOK_FATARROW",
-            "::": "TOK_SCOPE",
-            ":=": "TOK_ASSIGN",
-            "<": "TOK_LT",
-            ">": "TOK_GT",
-            '"': "TOK_STRING",
-            "&": "TOK_AND",
-            "|": "TOK_OR",
-            "^": "TOK_XOR",
-            "~": "TOK_NOT",
+            "!=": "TOK_NEQ", "==": "TOK_EQEQ", "&&": "TOK_ANDAND", "||": "TOK_OROR",
+            "<=": "TOK_LEQ", ">=": "TOK_GEQ", "->": "TOK_ARROW", "=>": "TOK_FATARROW",
+            "::": "TOK_SCOPE", ":=": "TOK_ASSIGN"
         }
-
         if s in special_map:
-            name = special_map[s]
-        elif len(s) == 1 and not s.isalnum():
-            name = f"TOK_SYM_{ord(s)}"
-        elif not s.isidentifier():
+            return special_map[s]
+
+        single_map = {
+            '+': 'PLUS', '-': 'MINUS', '*': 'STAR', '/': 'SLASH', '=': 'EQUAL',
+            '(': 'LPAREN', ')': 'RPAREN', '{': 'LBRACE', '}': 'RBRACE',
+            '[': 'LBRACKET', ']': 'RBRACKET', ';': 'SEMICOLON', ':': 'COLON',
+            ',': 'COMMA', '.': 'DOT', '"': 'QUOTE', '\'': 'APOSTROPHE',
+            '<': 'LT', '>': 'GT', '!': 'EXCL', '?': 'QMARK', '|': 'PIPE',
+            '&': 'AMP', '%': 'PERCENT', '^': 'CARET', '#': 'HASH',
+            '@': 'AT', '$': 'DOLLAR', '~': 'TILDE', '\\': 'BACKSLASH'
+        }
+        if len(s) == 1 and not s.isalnum():
+            return "TOK_" + single_map.get(s, f"SYM_{ord(s)}")
+
+        if not s.isidentifier():
             code = "_".join(str(ord(ch)) for ch in s)
-            name = f"TOK_REGEX_{code}"
-        else:
-            name = "TOK_" + re.sub(r'[^A-Za-z0-9_]+', '_', s.upper())
+            return f"TOK_REGEX_{code}"
 
-        if register:
-            base = name
-            counter = 2
-            while name in self.used_names:
-                name = f"{base}__{counter}"
-                counter += 1
-            self.used_names.add(name)
-
-        return name
-
-    def _write_token_mapping(self):
-        with open("out/token_mapping.txt", "w", encoding="utf-8") as f:
-            for t in self.terminals:
-                cname = self.clean_name(t, register=False)
-                f.write(f"{t} {cname}\n")
+        s = re.sub(r'[^A-Za-z0-9_]+', '_', s)
+        return "TOK_" + s.upper()
 
 
 # ================================================================
 # 4. Точка входа
 # ================================================================
-
 def main():
     grammar_file = "grammar.txt"
     cleaner = GrammarCleaner(grammar_file)
@@ -360,7 +345,6 @@ def main():
     rules = grammar.parse()
     gen = CppRecursiveDescentGen(rules, grammar.terminals)
     gen.generate_all()
-    print("✅ Парсер и токены успешно сгенерированы в ./out/")
 
 
 if __name__ == "__main__":
