@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Процедурный генератор C++ лексера (с бором / Ахо-Корасиком)
-Создаёт out/lexer.hpp, совместимый с parser::TokenType
+Процедурный генератор C++ лексера (бор / автомат Ахо-Корасика)
+Создаёт out/lexer.hpp, совместимый с parser::TokenType.
+Каждая вершина хранит parser::TokenType напрямую.
 """
 
 import os
@@ -44,7 +45,7 @@ def generate_lexer():
     };
 
     // ============================================================
-    // Бор / автомат Ахо-Корасика для распознавания ключевых слов
+    // Бор / автомат Ахо-Корасика с хранением типа токена
     // ============================================================
     class AhoCorasick {
     public:
@@ -53,10 +54,10 @@ def generate_lexer():
             int fail = 0;
             bool is_terminal = false;
             std::string word;
+            parser::TokenType token_type = parser::TokenType::IDENTIFIER;
         };
 
         std::vector<Node> trie;
-        std::unordered_map<std::string, parser::TokenType> token_map;
 
         AhoCorasick() { trie.emplace_back(); }
 
@@ -71,7 +72,7 @@ def generate_lexer():
             }
             trie[v].is_terminal = true;
             trie[v].word = word;
-            token_map[word] = t;
+            trie[v].token_type = t;
         }
 
         void build() {
@@ -88,8 +89,11 @@ def generate_lexer():
                     if (trie[j].next.count(ch))
                         j = trie[j].next[ch];
                     trie[u].fail = j;
-                    if (trie[j].is_terminal && !trie[u].is_terminal)
+                    if (trie[j].is_terminal && !trie[u].is_terminal) {
+                        trie[u].is_terminal = true;
                         trie[u].word = trie[j].word;
+                        trie[u].token_type = trie[j].token_type;
+                    }
                     q.push(u);
                 }
             }
@@ -103,24 +107,31 @@ def generate_lexer():
                 if (trie[v].next.count(ch))
                     v = trie[v].next.at(ch);
             }
-
             int j = v;
             while (j) {
                 if (trie[j].is_terminal && trie[j].word == word) {
-                    auto it = token_map.find(word);
-                    if (it != token_map.end()) {
-                        out_type = it->second;
-                        return true;
-                    }
+                    out_type = trie[j].token_type;
+                    return true;
                 }
                 j = trie[j].fail;
             }
             return false;
         }
+
+        void debug_print() const {
+            std::cout << "🧭 Keyword trie built (" << trie.size() << " nodes):\\n";
+            for (size_t i = 0; i < trie.size(); ++i) {
+                const auto& n = trie[i];
+                if (n.is_terminal) {
+                    std::cout << "   • [" << n.word << "] → "
+                              << static_cast<int>(n.token_type) << std::endl;
+                }
+            }
+        }
     };
 
     // ============================================================
-    // Лексер на базе автомата Ахо-Корасика
+    // Лексер
     // ============================================================
     class Lexer {
     public:
@@ -166,29 +177,29 @@ def generate_lexer():
 
         void load_keywords(const std::string& file) {
             std::ifstream in(file);
+            if (!in.is_open()) {
+                std::cerr << "⚠️ Could not open keyword file: " << file << std::endl;
+                return;
+            }
+
             std::string kw;
             while (std::getline(in, kw)) {
                 if (!kw.empty()) {
-                    // автоматическая привязка типа токена
-                    std::string cname = "TOK_" + kw;
-                    std::transform(cname.begin(), cname.end(), cname.begin(), ::toupper);
-                    try {
-                        parser::TokenType t = parser::TokenType::IDENTIFIER;
-                        if (kw == "int") t = parser::TokenType::TOK_INT;
-                        else if (kw == "float") t = parser::TokenType::TOK_FLOAT;
-                        else if (kw == "double") t = parser::TokenType::TOK_DOUBLE;
-                        else if (kw == "if") t = parser::TokenType::TOK_IF;
-                        else if (kw == "else") t = parser::TokenType::TOK_ELSE;
-                        else if (kw == "while") t = parser::TokenType::TOK_WHILE;
-                        else if (kw == "return") t = parser::TokenType::TOK_RETURN;
-                        else if (kw == "class") t = parser::TokenType::TOK_CLASS;
-                        automaton.insert(kw, t);
-                    } catch (...) {
-                        std::cerr << "⚠️ Keyword not mapped: " << kw << "\\n";
-                    }
+                    std::cout << "📘 Loading keyword: [" << kw << "]" << std::endl;
+                    parser::TokenType t = parser::TokenType::IDENTIFIER;
+                    if (kw == "int") t = parser::TokenType::TOK_INT;
+                    else if (kw == "float") t = parser::TokenType::TOK_FLOAT;
+                    else if (kw == "double") t = parser::TokenType::TOK_DOUBLE;
+                    else if (kw == "if") t = parser::TokenType::TOK_IF;
+                    else if (kw == "else") t = parser::TokenType::TOK_ELSE;
+                    else if (kw == "while") t = parser::TokenType::TOK_WHILE;
+                    else if (kw == "return") t = parser::TokenType::TOK_RETURN;
+                    else if (kw == "class") t = parser::TokenType::TOK_CLASS;
+                    automaton.insert(kw, t);
                 }
             }
             automaton.build();
+            automaton.debug_print();
         }
 
         char peek_char() const { return pos < source.size() ? source[pos] : '\0'; }
@@ -228,22 +239,27 @@ def generate_lexer():
 
             std::string word = source.substr(start, pos - start);
             parser::TokenType t = parser::TokenType::IDENTIFIER;
-
             if (automaton.match_exact(word, t)) {
+                std::cout << "🔹 Matched keyword: [" << word << "] → "
+                          << static_cast<int>(t) << std::endl;
                 return Token(t, word, word, line, start_col);
             }
 
+            std::cout << "🟡 Identifier: [" << word << "]" << std::endl;
             return Token(parser::TokenType::IDENTIFIER, word, word, line, start_col);
         }
 
         Token read_number() {
             size_t start = pos, start_col = col;
             bool has_dot = false;
+
             while (std::isdigit(peek_char()) || (!has_dot && peek_char() == '.')) {
                 if (peek_char() == '.') has_dot = true;
                 get_char();
             }
+
             std::string val = source.substr(start, pos - start);
+            std::cout << "🔢 Number: [" << val << "]" << std::endl;
             return Token(parser::TokenType::NUMBER, val, val, line, start_col);
         }
 
@@ -256,6 +272,7 @@ def generate_lexer():
                 val += get_char();
             }
             get_char();
+            std::cout << "💬 String: [" << val << "]" << std::endl;
             return Token(parser::TokenType::STRING, val, val, line, start_col);
         }
 
@@ -272,6 +289,7 @@ def generate_lexer():
                     sym = two;
                 }
             }
+            std::cout << "⚙️ Symbol: [" << sym << "]" << std::endl;
             return Token(parser::TokenType::SYMBOL, sym, sym, line, start_col);
         }
     };
@@ -282,7 +300,7 @@ def generate_lexer():
     ensure_out_dir()
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         f.write(header)
-    print(f"✅ Лексер с бором и автоматом Ахо-Корасика сгенерирован: {OUT_FILE}")
+    print(f"✅ Лексер (бор/Ахо-Корасик) успешно сгенерирован: out/lexer.hpp")
 
 
 if __name__ == "__main__":
