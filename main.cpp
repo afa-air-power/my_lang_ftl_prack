@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     std::string source = buffer.str();
 
     // Создаём лексер на основе содержимого файла lexer::Lexer lex(source, "out/system_reserved_identifiers.txt");
-    lexer::Lexer lex(source, "out/system_reserved_identifiers.txt");
+    lexer::Lexer lex(source, "../out/system_reserved_identifiers.txt");
 
 
     // Запускаем синтаксический анализ

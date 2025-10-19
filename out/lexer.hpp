@@ -25,7 +25,7 @@ struct Token {
 };
 
 // ============================================================
-// Бор / автомат Ахо-Корасика
+// Бор / автомат Ахо-Корасика с хранением типа токена
 // ============================================================
 class AhoCorasick {
 public:
@@ -34,10 +34,10 @@ public:
         int fail = 0;
         bool is_terminal = false;
         std::string word;
+        parser::TokenType token_type = parser::TokenType::IDENTIFIER;
     };
 
     std::vector<Node> trie;
-    std::unordered_map<std::string, parser::TokenType> token_map;
 
     AhoCorasick() { trie.emplace_back(); }
 
@@ -52,7 +52,7 @@ public:
         }
         trie[v].is_terminal = true;
         trie[v].word = word;
-        token_map[word] = t;
+        trie[v].token_type = t;
     }
 
     void build() {
@@ -69,8 +69,11 @@ public:
                 if (trie[j].next.count(ch))
                     j = trie[j].next[ch];
                 trie[u].fail = j;
-                if (trie[j].is_terminal && !trie[u].is_terminal)
+                if (trie[j].is_terminal && !trie[u].is_terminal) {
+                    trie[u].is_terminal = true;
                     trie[u].word = trie[j].word;
+                    trie[u].token_type = trie[j].token_type;
+                }
                 q.push(u);
             }
         }
@@ -84,19 +87,26 @@ public:
             if (trie[v].next.count(ch))
                 v = trie[v].next.at(ch);
         }
-
         int j = v;
         while (j) {
             if (trie[j].is_terminal && trie[j].word == word) {
-                auto it = token_map.find(word);
-                if (it != token_map.end()) {
-                    out_type = it->second;
-                    return true;
-                }
+                out_type = trie[j].token_type;
+                return true;
             }
             j = trie[j].fail;
         }
         return false;
+    }
+
+    void debug_print() const {
+        std::cout << "🧭 Keyword trie built (" << trie.size() << " nodes):\\n";
+        for (size_t i = 0; i < trie.size(); ++i) {
+            const auto& n = trie[i];
+            if (n.is_terminal) {
+                std::cout << "   • [" << n.word << "] → "
+                          << static_cast<int>(n.token_type) << std::endl;
+            }
+        }
     }
 };
 
@@ -147,9 +157,15 @@ private:
 
     void load_keywords(const std::string& file) {
         std::ifstream in(file);
+        if (!in.is_open()) {
+            std::cerr << "⚠️ Could not open keyword file: " << file << std::endl;
+            return;
+        }
+
         std::string kw;
         while (std::getline(in, kw)) {
             if (!kw.empty()) {
+                std::cout << "📘 Loading keyword: [" << kw << "]" << std::endl;
                 parser::TokenType t = parser::TokenType::IDENTIFIER;
                 if (kw == "int") t = parser::TokenType::TOK_INT;
                 else if (kw == "float") t = parser::TokenType::TOK_FLOAT;
@@ -163,6 +179,7 @@ private:
             }
         }
         automaton.build();
+        automaton.debug_print();
     }
 
     char peek_char() const { return pos < source.size() ? source[pos] : '\0'; }
@@ -202,19 +219,28 @@ private:
 
         std::string word = source.substr(start, pos - start);
         parser::TokenType t = parser::TokenType::IDENTIFIER;
-        if (automaton.match_exact(word, t))
+        if (automaton.match_exact(word, t)) {
+            std::cout << "🔹 Matched keyword: [" << word << "] → "
+                      << static_cast<int>(t) << std::endl;
             return Token(t, word, word, line, start_col);
+        }
+
+        std::cout << "🟡 Identifier: [" << word << "]" << std::endl;
         return Token(parser::TokenType::IDENTIFIER, word, word, line, start_col);
     }
 
     Token read_number() {
         size_t start = pos, start_col = col;
         bool has_dot = false;
-        while (std::isdigit(peek_char()) or (not has_dot and peek_char() == '.')){
-            if (peek_char() == '.') has_dot = true
-            get_char()}
-        val = source[start:pos]
-        return Token(parser::TokenType::NUMBER, val, val, line, start_col)
+
+        while (std::isdigit(peek_char()) || (!has_dot && peek_char() == '.')) {
+            if (peek_char() == '.') has_dot = true;
+            get_char();
+        }
+
+        std::string val = source.substr(start, pos - start);
+        std::cout << "🔢 Number: [" << val << "]" << std::endl;
+        return Token(parser::TokenType::NUMBER, val, val, line, start_col);
     }
 
     Token read_string() {
@@ -226,6 +252,7 @@ private:
             val += get_char();
         }
         get_char();
+        std::cout << "💬 String: [" << val << "]" << std::endl;
         return Token(parser::TokenType::STRING, val, val, line, start_col);
     }
 
@@ -242,6 +269,7 @@ private:
                 sym = two;
             }
         }
+        std::cout << "⚙️ Symbol: [" << sym << "]" << std::endl;
         return Token(parser::TokenType::SYMBOL, sym, sym, line, start_col);
     }
 };
