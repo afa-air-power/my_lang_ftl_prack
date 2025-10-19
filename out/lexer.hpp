@@ -99,6 +99,7 @@ public:
     }
 
     void debug_print() const {
+    if(0){
         std::cout << "🧭 Keyword trie built (" << trie.size() << " nodes):\\n";
         for (size_t i = 0; i < trie.size(); ++i) {
             const auto& n = trie[i];
@@ -107,7 +108,7 @@ public:
                           << static_cast<int>(n.token_type) << std::endl;
             }
         }
-    }
+    }}
 };
 
 // ============================================================
