@@ -1,45 +1,45 @@
 <Program> -> <DeclarationList>
-<DeclarationList> -> <Declaration> <DeclarationList>
+<DeclarationList> -> <Declaration> <DeclarationList> | ε
 <Declaration> -> <FunctionDecl>
 <VarDecl> -> <Type> <Identifier> <VarDeclRest> ";"
 <VarDeclRest> -> "=" <Expression> | ε
 <Type> -> "int" | "float" | "double"
 <FunctionDecl> -> <Type> <Identifier> "(" <ParamList> ")" <CompoundStmt>
 <ParamList> -> <Param> <ParamListRest> | ε
-<ParamListRest> -> "," <Param> <ParamListRest>
+<ParamListRest> -> "," <Param> <ParamListRest> | ε
 <Param> -> <Type> <Identifier>
 <ClassDecl> -> "class" <Identifier> "{" <MemberList> "}" ";"
-<MemberList> -> <Member> <MemberList>
+<MemberList> -> <Member> <MemberList> | ε
 <Member> -> <VarDecl>
 <CompoundStmt> -> "{" <StmtList> "}"
-<StmtList> -> <Statement> <StmtList>
-<Statement> -> <IfStmt>
-<IfStmt> -> "if" "(" <Expression> ")" <Statement> <ElsePart>
+<StmtList> -> <Statement> <StmtList> | ε
+<Statement> -> <IfStmt> | <WhileStmt> | <ReturnStmt> | <ExpressionStmt> | <CompoundStmt> | <VarDecl>
+<IfStmt> -> "if" "(" <Expression> ")" <Statement> <ElsePart> | "if" "(" <Expression> ")" <Statement>
 <ElsePart> -> "else" <Statement>
 <WhileStmt> -> "while" "(" <Expression> ")" <Statement>
 <ReturnStmt> -> "return" <Expression> ";"
 <ExpressionStmt> -> <Expression> ";"
 <Expression> -> <AssignmentExpr>
-<AssignmentExpr> -> <LogicalOrExpr> <AssignOp> <AssignmentExpr>
+<AssignmentExpr> -> <LogicalOrExpr> <AssignOp> <AssignmentExpr> | <LogicalOrExpr>
 <AssignOp> -> "=" | "+=" | "-=" | "*=" | "/="
 <LogicalOrExpr> -> <LogicalAndExpr> <LogicalOrRest>
-<LogicalOrRest> -> " | | " <LogicalAndExpr> <LogicalOrRest>
+<LogicalOrRest> -> " | | " <LogicalAndExpr> <LogicalOrRest> | ε
 <LogicalAndExpr> -> <EqualityExpr> <LogicalAndRest>
-<LogicalAndRest> -> "&&" <EqualityExpr> <LogicalAndRest>
+<LogicalAndRest> -> "&&" <EqualityExpr> <LogicalAndRest> | ε
 <EqualityExpr> -> <RelationalExpr> <EqRest>
-<EqRest> -> "==" <RelationalExpr> <EqRest>
+<EqRest> -> "==" <RelationalExpr> <EqRest> | ε
 <RelationalExpr> -> <AddExpr> <RelRest>
-<RelRest> -> "<" <AddExpr> <RelRest>
+<RelRest> -> "<" <AddExpr> <RelRest> | ε
 <AddExpr> -> <Term> <AddRest>
-<AddRest> -> "+" <Term> <AddRest>
+<AddRest> -> "+" <Term> <AddRest> | ε
 <Term> -> <Factor> <TermRest>
-<TermRest> -> "*" <Factor> <TermRest>
+<TermRest> -> "*" <Factor> <TermRest> | ε
 <Factor> -> <Primary> | "-" <Factor> | "!" <Factor>
-<Primary> -> <Literal>
+<Primary> -> <Literal> | <Identifier> | <FunctionCall>
 <FunctionCall> -> <Identifier> "(" <ArgList> ")"
-<ArgList> -> <Expression> <ArgListRest>
+<ArgList> -> <Expression> <ArgListRest> | ε
 <ArgListRest> -> "," <Expression> <ArgListRest> | ε
-<Literal> -> <IntegerLiteral>
+<Literal> -> <IntegerLiteral> | <FloatLiteral> | <StringLiteral>
 <IntegerLiteral> -> TOK_NUMBER
 <FloatLiteral> -> TOK_NUMBER
 <StringLiteral> -> TOK_STRING
