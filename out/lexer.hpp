@@ -8,6 +8,7 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
+#include <iostream>
 
 #include "keywords.hpp"
 
@@ -23,20 +24,24 @@ struct Token {
         : type(t), name(std::move(n)), value(std::move(v)), line(l), col(c) {}
 };
 
+// ============================================================
+// Бор / автомат Ахо-Корасика
+// ============================================================
 class AhoCorasick {
 public:
     struct Node {
         std::unordered_map<char, int> next;
         int fail = 0;
-        std::string out;
         bool is_terminal = false;
+        std::string word;
     };
 
     std::vector<Node> trie;
+    std::unordered_map<std::string, parser::TokenType> token_map;
 
     AhoCorasick() { trie.emplace_back(); }
 
-    void insert(const std::string& word) {
+    void insert(const std::string& word, parser::TokenType t) {
         int v = 0;
         for (char ch : word) {
             if (!trie[v].next.count(ch)) {
@@ -46,33 +51,32 @@ public:
             v = trie[v].next[ch];
         }
         trie[v].is_terminal = true;
-        trie[v].out = word;
+        trie[v].word = word;
+        token_map[word] = t;
     }
 
     void build() {
         std::queue<int> q;
-        for (auto& p : trie[0].next)
-            q.push(p.second);
+        for (auto& [ch, nxt] : trie[0].next)
+            q.push(nxt);
 
         while (!q.empty()) {
             int v = q.front(); q.pop();
-            for (auto& p : trie[v].next) {
-                char ch = p.first;
-                int u = p.second;
+            for (auto& [ch, u] : trie[v].next) {
                 int j = trie[v].fail;
                 while (j && !trie[j].next.count(ch))
                     j = trie[j].fail;
                 if (trie[j].next.count(ch))
                     j = trie[j].next[ch];
                 trie[u].fail = j;
-                if (trie[j].is_terminal && trie[u].out.empty())
-                    trie[u].out = trie[j].out;
+                if (trie[j].is_terminal && !trie[u].is_terminal)
+                    trie[u].word = trie[j].word;
                 q.push(u);
             }
         }
     }
 
-    bool is_keyword(const std::string& word) const {
+    bool match_exact(const std::string& word, parser::TokenType& out_type) const {
         int v = 0;
         for (char ch : word) {
             while (v && !trie[v].next.count(ch))
@@ -80,16 +84,25 @@ public:
             if (trie[v].next.count(ch))
                 v = trie[v].next.at(ch);
         }
+
         int j = v;
         while (j) {
-            if (trie[j].is_terminal && trie[j].out == word)
-                return true;
+            if (trie[j].is_terminal && trie[j].word == word) {
+                auto it = token_map.find(word);
+                if (it != token_map.end()) {
+                    out_type = it->second;
+                    return true;
+                }
+            }
             j = trie[j].fail;
         }
         return false;
     }
 };
 
+// ============================================================
+// Лексер
+// ============================================================
 class Lexer {
 public:
     Lexer(const std::string& text, const std::string& keywords_file)
@@ -99,11 +112,7 @@ public:
     }
 
     Token next() {
-        if (pos >= source.size())
-            return Token(parser::TokenType::END_OF_FILE, "EOF", "", line, col);
-
         skip_ws_comments();
-
         if (pos >= source.size())
             return Token(parser::TokenType::END_OF_FILE, "EOF", "", line, col);
 
@@ -118,20 +127,14 @@ public:
         return read_symbol();
     }
 
-    Token peek() const {
-        if (pos < tokens.size())
-            return tokens[pos];
-        return Token(parser::TokenType::END_OF_FILE, "EOF", "", line, col);
-    }
-
     std::vector<Token> tokenize() {
         tokens.clear();
-        while (pos < source.size()) {
+        while (true) {
             Token t = next();
-            if (t.type == parser::TokenType::END_OF_FILE) break;
             tokens.push_back(t);
+            if (t.type == parser::TokenType::END_OF_FILE)
+                break;
         }
-        tokens.push_back(Token(parser::TokenType::END_OF_FILE, "EOF", "", line, col));
         return tokens;
     }
 
@@ -146,8 +149,18 @@ private:
         std::ifstream in(file);
         std::string kw;
         while (std::getline(in, kw)) {
-            if (!kw.empty())
-                automaton.insert(kw);
+            if (!kw.empty()) {
+                parser::TokenType t = parser::TokenType::IDENTIFIER;
+                if (kw == "int") t = parser::TokenType::TOK_INT;
+                else if (kw == "float") t = parser::TokenType::TOK_FLOAT;
+                else if (kw == "double") t = parser::TokenType::TOK_DOUBLE;
+                else if (kw == "if") t = parser::TokenType::TOK_IF;
+                else if (kw == "else") t = parser::TokenType::TOK_ELSE;
+                else if (kw == "while") t = parser::TokenType::TOK_WHILE;
+                else if (kw == "return") t = parser::TokenType::TOK_RETURN;
+                else if (kw == "class") t = parser::TokenType::TOK_CLASS;
+                automaton.insert(kw, t);
+            }
         }
         automaton.build();
     }
@@ -184,23 +197,24 @@ private:
 
     Token read_identifier_or_keyword() {
         size_t start = pos, start_col = col;
-        while (std::isalnum(peek_char()) || peek_char() == '_') get_char();
+        while (std::isalnum(peek_char()) || peek_char() == '_')
+            get_char();
+
         std::string word = source.substr(start, pos - start);
-        parser::TokenType t = automaton.is_keyword(word)
-            ? parser::TokenType::KEYWORD
-            : parser::TokenType::IDENTIFIER;
-        return Token(t, word, word, line, start_col);
+        parser::TokenType t = parser::TokenType::IDENTIFIER;
+        if (automaton.match_exact(word, t))
+            return Token(t, word, word, line, start_col);
+        return Token(parser::TokenType::IDENTIFIER, word, word, line, start_col);
     }
 
     Token read_number() {
         size_t start = pos, start_col = col;
         bool has_dot = false;
-        while (std::isdigit(peek_char()) || (!has_dot && peek_char() == '.')) {
-            if (peek_char() == '.') has_dot = true;
-            get_char();
-        }
-        std::string val = source.substr(start, pos - start);
-        return Token(parser::TokenType::NUMBER, val, val, line, start_col);
+        while (std::isdigit(peek_char()) or (not has_dot and peek_char() == '.')){
+            if (peek_char() == '.') has_dot = true
+            get_char()}
+        val = source[start:pos]
+        return Token(parser::TokenType::NUMBER, val, val, line, start_col)
     }
 
     Token read_string() {

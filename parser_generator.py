@@ -120,7 +120,7 @@ class CppRecursiveDescentGen:
     def _write_reserved_list(self):
         with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:
             for t in self.terminals:
-                f.write(f"{t}\n")
+                f.write(f"{t.strip('"')}\n")
 
     # ---------- keywords.hpp ----------
     def _write_keywords_hpp(self):
@@ -158,11 +158,16 @@ class CppRecursiveDescentGen:
         # Строковое представление
         lines.append("inline std::string token_to_string(TokenType t) {")
         lines.append("    switch(t) {")
+        lines.append('        case TokenType::KEYWORD: return "KEYWORD";')
+        lines.append('        case TokenType::IDENTIFIER: return "IDENTIFIER";')
+        lines.append('        case TokenType::NUMBER: return "NUMBER";')
+        lines.append('        case TokenType::STRING: return "STRING";')
+        lines.append('        case TokenType::SYMBOL: return "SYMBOL";')
 
         for t in self.terminals:
             cname = self.clean_name(t, is_nonterminal=False)
-            escaped = t.replace('"', '\\"')
-            lines.append(f'        case TokenType::{cname}: return "{escaped}";')
+            lines.append(f'        case TokenType::{cname}: return "{cname}";')
+
 
         lines.append('        case TokenType::END_OF_FILE: return "EOF";')
         lines.append("    } return \"?\"; }")
@@ -206,6 +211,7 @@ class CppRecursiveDescentGen:
             #include "parser.hpp"
             #include <iostream>
             #include <vector>
+            #include <fstream>
 
             namespace parser {
             static lexer::Lexer* current_lexer = nullptr;
@@ -226,6 +232,29 @@ class CppRecursiveDescentGen:
                     std::cout << "✅ Parsing completed successfully." << std::endl;
                 } catch (const ParseError& e) {
                     std::cerr << "❌ Parse failed: " << e.what() << std::endl;
+
+                    // --- запись информации лексера ---
+                    std::ofstream out("lexer_info.txt");
+                    if (out.is_open()) {
+                        out << "LEXER DUMP (on parse error)\\n";
+                        out << "=============================\\n";
+                        try {
+                            auto tokens = current_lexer->tokenize();
+                            for (const auto& t : tokens) {
+                                out << "Type: " << token_to_string(t.type)
+                                    << ", Name: " << t.name
+                                    << ", Value: " << t.value
+                                    << ", Line: " << t.line
+                                    << ", Col: " << t.col << "\\n";
+                            }
+                        } catch (const std::exception& le) {
+                            out << "[Lexer dump failed: " << le.what() << "]\\n";
+                        }
+                        out.close();
+                        std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
+                    } else {
+                        std::cerr << "⚠️ Unable to open lexer_info.txt for writing.\\n";
+                    }
                 }
             }
 
@@ -253,6 +282,7 @@ class CppRecursiveDescentGen:
 
         with open("out/parser.cpp", "w", encoding="utf-8") as f:
             f.write(header + "\n\n".join(functions) + footer)
+
 
     def _gen_function(self, head):
         name = self.clean_name(head, is_nonterminal=True)
