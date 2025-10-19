@@ -108,6 +108,71 @@ class CppRecursiveDescentGen:
         self.terminals = sorted(terminals)
         self.used_names = set()
 
+        # ==== добавлено: вычисление FIRST множеств ====
+        self.first = {}
+        self._compute_first_sets()
+
+    # ================================================================
+    # FIRST sets
+    # ================================================================
+    def _compute_first_sets(self):
+        """Итеративное вычисление FIRST множеств для всех нетерминалов."""
+        for nt in self.rules.keys():
+            self.first[nt] = set()
+
+        changed = True
+        while changed:
+            changed = False
+            for nt, alts in self.rules.items():
+                F = self.first[nt]
+                for alt in alts:
+                    # ε-альтернатива
+                    if not alt:
+                        if "__EPS" not in F:
+                            F.add("__EPS")
+                            changed = True
+                        continue
+
+                    add_eps_all = True
+                    for sym in alt:
+                        if self._is_nonterm(sym):
+                            sym_first = self.first.get(sym, set())
+                            # добавить все кроме ε
+                            to_add = {x for x in sym_first if x != "__EPS"}
+                            before = len(F)
+                            F.update(to_add)
+                            if len(F) != before:
+                                changed = True
+                            # если ε в FIRST(sym) — идем дальше
+                            if "__EPS" in sym_first:
+                                continue
+                            else:
+                                add_eps_all = False
+                                break
+                        else:
+                            token_name = self.clean_name(sym, is_nonterminal=False)
+                            enum_name = f"TokenType::{token_name}"
+                            if enum_name not in F:
+                                F.add(enum_name)
+                                changed = True
+                            add_eps_all = False
+                            break
+                    if add_eps_all:
+                        if "__EPS" not in F:
+                            F.add("__EPS")
+                            changed = True
+
+    def _first_of_symbol(self, sym):
+        """Возвращает множество TokenType::NAME строк для FIRST(sym)."""
+        if self._is_nonterm(sym):
+            return set(self.first.get(sym, set()))
+        else:
+            token_name = self.clean_name(sym, is_nonterminal=False)
+            return {f"TokenType::{token_name}"}
+
+    # ================================================================
+    # Генерация файлов
+    # ================================================================
     def generate_all(self):
         os.makedirs("out", exist_ok=True)
         self._write_reserved_list()
@@ -116,13 +181,11 @@ class CppRecursiveDescentGen:
         self._write_parser_cpp()
         print("✅ Генерация завершена: parser.cpp/hpp и keywords.hpp созданы.")
 
-    # ---------- system_reserved_identifiers.txt ----------
     def _write_reserved_list(self):
         with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:
             for t in self.terminals:
                 f.write(f"{t.strip('"')}\n")
 
-    # ---------- keywords.hpp ----------
     def _write_keywords_hpp(self):
         lines = [
             "#pragma once",
@@ -141,7 +204,6 @@ class CppRecursiveDescentGen:
             "    STRING,",
             "    SYMBOL,",
             "",
-
         ]
 
         seen = set()
@@ -155,7 +217,6 @@ class CppRecursiveDescentGen:
         lines.append("    END_OF_FILE")
         lines.append("};\n")
 
-        # Строковое представление
         lines.append("inline std::string token_to_string(TokenType t) {")
         lines.append("    switch(t) {")
         lines.append('        case TokenType::KEYWORD: return "KEYWORD";')
@@ -168,7 +229,6 @@ class CppRecursiveDescentGen:
             cname = self.clean_name(t, is_nonterminal=False)
             lines.append(f'        case TokenType::{cname}: return "{cname}";')
 
-
         lines.append('        case TokenType::END_OF_FILE: return "EOF";')
         lines.append("    } return \"?\"; }")
         lines.append("\n} // namespace parser")
@@ -176,7 +236,6 @@ class CppRecursiveDescentGen:
         with open("out/keywords.hpp", "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
-    # ---------- parser.hpp ----------
     def _write_parser_hpp(self):
         lines = [
             "#pragma once",
@@ -205,7 +264,6 @@ class CppRecursiveDescentGen:
         with open("out/parser.hpp", "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
-    # ---------- parser.cpp ----------
     def _write_parser_cpp(self):
         header = dedent("""\
             #include "parser.hpp"
@@ -217,23 +275,33 @@ class CppRecursiveDescentGen:
             static lexer::Lexer* current_lexer = nullptr;
             TokenType current = TokenType::END_OF_FILE;
 
+            static std::vector<std::string> call_stack;
+
+            static void debug_token(const std::string& where) {
+                std::cout << "🔎 [" << where << "] current token: "
+                          << token_to_string(current) << std::endl;
+            }
+
             void gc() {
                 if (!current_lexer)
                     throw std::runtime_error("Lexer not initialized");
                 current = current_lexer->next().type;
+                std::cout << "➡️ gc(): now current = " << token_to_string(current) << std::endl;
             }
 
             void parse(lexer::Lexer& lexer, const std::string& path) {
                 current_lexer = &lexer;
                 gc();
-                std::cout << "Parsing file: " << path << std::endl;
+                std::cout << "\\n📘 Parsing file: " << path << std::endl;
                 try {
                     TOK_PROGRAM();
-                    std::cout << "✅ Parsing completed successfully." << std::endl;
+                    std::cout << "\\n✅ Parsing completed successfully.\\n";
                 } catch (const ParseError& e) {
-                    std::cerr << "❌ Parse failed: " << e.what() << std::endl;
+                    std::cerr << "\\n❌ Parse failed: " << e.what() << std::endl;
+                    std::cerr << "Call stack (on error):\\n";
+                    for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
+                        std::cerr << "  • " << *it << std::endl;
 
-                    // --- запись информации лексера ---
                     std::ofstream out("lexer_info.txt");
                     if (out.is_open()) {
                         out << "LEXER DUMP (on parse error)\\n";
@@ -252,24 +320,25 @@ class CppRecursiveDescentGen:
                         }
                         out.close();
                         std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
-                    } else {
-                        std::cerr << "⚠️ Unable to open lexer_info.txt for writing.\\n";
                     }
                 }
             }
-
-            static std::vector<std::string> call_stack;
 
             struct CallContext {
                 std::string name;
                 CallContext(const std::string& n) : name(n) {
                     call_stack.push_back(n);
+                    std::cout << "\\n➡️ Enter <" << n << ">" << std::endl;
+                    debug_token(n);
                 }
-                ~CallContext() { call_stack.pop_back(); }
+                ~CallContext() {
+                    std::cout << "⬅️ Leave <" << name << ">\\n";
+                    call_stack.pop_back();
+                }
             };
 
             static void syntax_error(const std::string& msg) {
-                std::cerr << "❌ Syntax error: " << msg << "\\n";
+                std::cerr << "\\n❌ Syntax error: " << msg << "\\n";
                 std::cerr << "Call stack:" << std::endl;
                 for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
                     std::cerr << "  in <" << *it << ">" << std::endl;
@@ -277,13 +346,19 @@ class CppRecursiveDescentGen:
             }
         """)
 
+        # --- функции ---
         functions = [self._gen_function(head) for head in self.rules]
+
+        # --- футер ---
         footer = "\n} // namespace parser\n"
 
         with open("out/parser.cpp", "w", encoding="utf-8") as f:
             f.write(header + "\n\n".join(functions) + footer)
 
 
+    # ================================================================
+    # Основная генерация функций
+    # ================================================================
     def _gen_function(self, head):
         name = self.clean_name(head, is_nonterminal=True)
         lines = [f"void {name}() {{", f"    CallContext ctx(\"{name}\");"]
@@ -299,13 +374,11 @@ class CppRecursiveDescentGen:
             lines.append(f"    {prefix} ({cond}) {{")
             for sym in alt:
                 if self._is_nonterm(sym):
-                    lines.append(f"        {self.clean_name(sym, is_nonterminal=True)}();")
+                    lines.append(f"        {self.clean_name(sym, True)}();")
                 else:
-                    token = self.clean_name(sym, is_nonterminal=False)
-                    lines.append(
-                        f"        if (current != TokenType::{token}) "
-                        f"syntax_error(\"expected {token} in {name}\");"
-                    )
+                    token = self.clean_name(sym, False)
+                    lines.append(f"        if (current != TokenType::{token}) "
+                                 f"syntax_error(\"expected {token} in {name}\");")
                     lines.append("        gc();")
             lines.append("        return; }")
 
@@ -314,28 +387,32 @@ class CppRecursiveDescentGen:
         return "\n".join(lines)
 
     def _make_condition(self, alt):
-        for sym in alt:
-            if not self._is_nonterm(sym):
-                return f"current == TokenType::{self.clean_name(sym, is_nonterminal=False)}"
-        return "true"
+        """Новая версия: использует FIRST множества."""
+        if not alt:
+            return "true"
+        first_sym = alt[0]
+        first_set = self._first_of_symbol(first_sym)
+        if "__EPS" in first_set:
+            return "true"
+        if not first_set:
+            return "true"
+        items = sorted(first_set)
+        if len(items) == 1:
+            return f"current == {items[0]}"
+        return " || ".join(f"current == {it}" for it in items)
 
     @staticmethod
     def _is_nonterm(sym):
         return sym.startswith("<") and sym.endswith(">")
 
-    # ---------- clean_name ----------
     @staticmethod
     def clean_name(sym, is_nonterminal=False):
         s = sym.strip()
-
-        # если это нетерминал — правило грамматики
         if is_nonterminal or (s.startswith("<") and s.endswith(">")):
             s = s.strip("<>")
             return "TOK_" + re.sub(r'[^A-Za-z0-9_]+', '_', s.upper())
 
-        # терминал
         s = s.strip('"')
-
         special_map = {
             "!=": "TOK_NEQ", "==": "TOK_EQEQ", "&&": "TOK_ANDAND", "||": "TOK_OROR",
             "<=": "TOK_LEQ", ">=": "TOK_GEQ", "->": "TOK_ARROW", "=>": "TOK_FATARROW",
