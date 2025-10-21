@@ -23,7 +23,7 @@
 <AssignmentExpr> -> <LogicalOrExpr> <AssignOp> <AssignmentExpr> | <LogicalOrExpr>
 <AssignOp> -> "=" | "+=" | "-=" | "*=" | "/="
 <LogicalOrExpr> -> <LogicalAndExpr> <LogicalOrRest>
-<LogicalOrRest> -> "||" <LogicalAndExpr> <LogicalOrRest> | ε
+<LogicalOrRest> -> " | | " <LogicalAndExpr> <LogicalOrRest> | ε
 <LogicalAndExpr> -> <EqualityExpr> <LogicalAndRest>
 <LogicalAndRest> -> "&&" <EqualityExpr> <LogicalAndRest> | ε
 <EqualityExpr> -> <RelationalExpr> <EqRest>
