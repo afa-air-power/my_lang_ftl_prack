@@ -1,458 +1,359 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Процедурный генератор рекурсивного спуска по формальной грамматике.
-Создаёт:
-  - out/parser.hpp
-  - out/parser.cpp
-  - out/keywords.hpp
-  - out/system_reserved_identifiers.txt
+Процедурный генератор C++ лексера (бор / автомат Ахо-Корасика)
+Создаёт out/lexer.hpp, совместимый с parser::TokenType.
+Каждая вершина хранит parser::TokenType напрямую.
 """
 
-import re
 import os
-import shutil
 from textwrap import dedent
 
-
-# ================================================================
-# 1. Очистка грамматики
-# ================================================================
-class GrammarCleaner:
-    def __init__(self, filename):
-        self.filename = filename
-
-    def clean(self):
-        """Удаляет пустые строки, выравнивает -> и |, сохраняет комментарии."""
-        if not os.path.exists(self.filename):
-            raise FileNotFoundError(f"Файл {self.filename} не найден")
-
-        backup = self.filename.replace(".txt", "_original.bak")
-        shutil.copyfile(self.filename, backup)
-
-        cleaned = []
-        with open(self.filename, "r", encoding="utf-8") as f:
-            for raw in f:
-                line = raw.rstrip()
-
-                if line.strip().startswith("//"):
-                    cleaned.append(line.strip())
-                    continue
-
-                if not line.strip():
-                    continue
-
-                line = re.sub(r'\s*->\s*', ' -> ', line)
-                line = re.sub(r'\s*\|\s*', ' | ', line)
-                line = re.sub(r'\s{2,}', ' ', line)
-                line = line.strip()
-
-                if "->" not in line:
-                    continue
-
-                cleaned.append(line)
-
-        with open(self.filename, "w", encoding="utf-8") as f:
-            for ln in cleaned:
-                f.write(ln + "\n")
-
-        print(f"🧹 Очистка завершена. Сохранена резервная копия: {backup}")
+OUT_DIR = "out"
+OUT_FILE = os.path.join(OUT_DIR, "lexer.hpp")
 
 
-# ================================================================
-# 2. Разбор грамматики
-# ================================================================
-class FormalGrammarParser:
-    def __init__(self, filename):
-        self.filename = filename
-        self.rules = {}
-        self.terminals = set()
-
-    def parse(self):
-        with open(self.filename, "r", encoding="utf-8") as f:
-            for raw in f:
-                line = raw.strip()
-                if not line or line.startswith("//"):
-                    continue
-                if "->" not in line:
-                    continue
-
-                head, body = map(str.strip, line.split("->", 1))
-                if not head or not body:
-                    continue
-
-                alts = [alt.strip() for alt in body.split("|")]
-                parsed_alts = []
-                for alt in alts:
-                    if alt == "ε":
-                        parsed_alts.append([])
-                        continue
-                    parts = alt.split()
-                    parsed_alts.append(parts)
-
-                    for p in parts:
-                        if not (p.startswith("<") and p.endswith(">")):
-                            self.terminals.add(p)
-
-                self.rules[head] = parsed_alts
-
-        return self.rules
+def ensure_out_dir():
+    os.makedirs(OUT_DIR, exist_ok=True)
 
 
-# ================================================================
-# 3. Генерация C++ кода
-# ================================================================
-class CppRecursiveDescentGen:
-    def __init__(self, rules, terminals):
-        self.rules = rules
-        self.terminals = sorted(terminals)
-        self.used_names = set()
+def generate_lexer():
+    header = dedent(r'''
+    #pragma once
+    #include <string>
+    #include <vector>
+    #include <unordered_map>
+    #include <queue>
+    #include <fstream>
+    #include <sstream>
+    #include <cctype>
+    #include <algorithm>
+    #include <iostream>
 
-        # ==== добавлено: вычисление FIRST множеств ====
-        self.first = {}
-        self._compute_first_sets()
+    #include "keywords.hpp"
 
-    # ================================================================
-    # FIRST sets
-    # ================================================================
-    def _compute_first_sets(self):
-        """Итеративное вычисление FIRST множеств для всех нетерминалов."""
-        for nt in self.rules.keys():
-            self.first[nt] = set()
+    namespace lexer {
 
-        changed = True
-        while changed:
-            changed = False
-            for nt, alts in self.rules.items():
-                F = self.first[nt]
-                for alt in alts:
-                    # ε-альтернатива
-                    if not alt:
-                        if "__EPS" not in F:
-                            F.add("__EPS")
-                            changed = True
-                        continue
+    struct Token {
+        parser::TokenType type;
+        std::string name;
+        std::string value;
+        size_t line;
+        size_t col;
+        Token(parser::TokenType t, std::string n, std::string v, size_t l, size_t c)
+            : type(t), name(std::move(n)), value(std::move(v)), line(l), col(c) {}
+    };
 
-                    add_eps_all = True
-                    for sym in alt:
-                        if self._is_nonterm(sym):
-                            sym_first = self.first.get(sym, set())
-                            # добавить все кроме ε
-                            to_add = {x for x in sym_first if x != "__EPS"}
-                            before = len(F)
-                            F.update(to_add)
-                            if len(F) != before:
-                                changed = True
-                            # если ε в FIRST(sym) — идем дальше
-                            if "__EPS" in sym_first:
-                                continue
-                            else:
-                                add_eps_all = False
-                                break
-                        else:
-                            token_name = self.clean_name(sym, is_nonterminal=False)
-                            enum_name = f"TokenType::{token_name}"
-                            if enum_name not in F:
-                                F.add(enum_name)
-                                changed = True
-                            add_eps_all = False
-                            break
-                    if add_eps_all:
-                        if "__EPS" not in F:
-                            F.add("__EPS")
-                            changed = True
+    // ============================================================
+    // Функция сопоставления символа с типом токена
+    // ============================================================
+    inline parser::TokenType symbol_to_token_type(const std::string& sym) {
+        static const std::unordered_map<std::string, parser::TokenType> symbol_map = {
+            {"(", parser::TokenType::TOK_LPAREN},
+            {")", parser::TokenType::TOK_RPAREN},
+            {"{", parser::TokenType::TOK_LBRACE},
+            {"}", parser::TokenType::TOK_RBRACE},
+            {";", parser::TokenType::TOK_SEMICOLON},
+            {",", parser::TokenType::TOK_COMMA},
+            {"+", parser::TokenType::TOK_PLUS},
+            {"-", parser::TokenType::TOK_MINUS},
+            {"*", parser::TokenType::TOK_STAR},
+            {"=", parser::TokenType::TOK_EQUAL},
+            {"<", parser::TokenType::TOK_LT},
+            {"!", parser::TokenType::TOK_EXCL},
+            {"==", parser::TokenType::TOK_EQEQ},
+            {"&&", parser::TokenType::TOK_ANDAND},
+            {"+=", parser::TokenType::TOK_PLUSEQUAL},
+            {"-=", parser::TokenType::TOK_MINUSEQUAL},
+            {"*=", parser::TokenType::TOK_STAREQUAL},
+            {"/=", parser::TokenType::TOK_SLASHEQUAL}
+        };
+        
+        auto it = symbol_map.find(sym);
+        if (it != symbol_map.end()) {
+            return it->second;
+        }
+        return parser::TokenType::SYMBOL;
+    }
 
-    def _first_of_symbol(self, sym):
-        """Возвращает множество TokenType::NAME строк для FIRST(sym)."""
-        if self._is_nonterm(sym):
-            return set(self.first.get(sym, set()))
-        else:
-            token_name = self.clean_name(sym, is_nonterminal=False)
-            return {f"TokenType::{token_name}"}
+    // ============================================================
+    // Бор / автомат Ахо-Корасика с хранением типа токена
+    // ============================================================
+    class AhoCorasick {
+    public:
+        struct Node {
+            std::unordered_map<char, int> next;
+            int fail = 0;
+            bool is_terminal = false;
+            std::string word;
+            parser::TokenType token_type = parser::TokenType::IDENTIFIER;
+        };
 
-    # ================================================================
-    # Генерация файлов
-    # ================================================================
-    def generate_all(self):
-        os.makedirs("out", exist_ok=True)
-        self._write_reserved_list()
-        self._write_keywords_hpp()
-        self._write_parser_hpp()
-        self._write_parser_cpp()
-        print("✅ Генерация завершена: parser.cpp/hpp и keywords.hpp созданы.")
+        std::vector<Node> trie;
 
-    def _write_reserved_list(self):
-        with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:
-            for t in self.terminals:
-                f.write(f"{t.strip('"')}\n")
+        AhoCorasick() { trie.emplace_back(); }
 
-    def _write_keywords_hpp(self):
-        lines = [
-            "#pragma once",
-            "#include <string>",
-            "",
-            "namespace parser {",
-            "",
-            "// =============================================================",
-            "// Автоматически сгенерированные типы токенов",
-            "// =============================================================",
-            "",
-            "enum class TokenType {"
-            "    KEYWORD,",
-            "    IDENTIFIER,",
-            "    NUMBER,",
-            "    STRING,",
-            "    SYMBOL,",
-            "",
-        ]
+        void insert(const std::string& word, parser::TokenType t) {
+            int v = 0;
+            for (char ch : word) {
+                if (!trie[v].next.count(ch)) {
+                    trie[v].next[ch] = (int)trie.size();
+                    trie.emplace_back();
+                }
+                v = trie[v].next[ch];
+            }
+            trie[v].is_terminal = true;
+            trie[v].word = word;
+            trie[v].token_type = t;
+        }
 
-        seen = set()
-        for t in self.terminals:
-            cname = self.clean_name(t, is_nonterminal=False)
-            if cname in seen:
-                continue
-            seen.add(cname)
-            lines.append(f"    {cname},")
+        void build() {
+            std::queue<int> q;
+            for (auto& [ch, nxt] : trie[0].next)
+                q.push(nxt);
 
-        lines.append("    END_OF_FILE")
-        lines.append("};\n")
+            while (!q.empty()) {
+                int v = q.front(); q.pop();
+                for (auto& [ch, u] : trie[v].next) {
+                    int j = trie[v].fail;
+                    while (j && !trie[j].next.count(ch))
+                        j = trie[j].fail;
+                    if (trie[j].next.count(ch))
+                        j = trie[j].next[ch];
+                    trie[u].fail = j;
+                    if (trie[j].is_terminal && !trie[u].is_terminal) {
+                        trie[u].is_terminal = true;
+                        trie[u].word = trie[j].word;
+                        trie[u].token_type = trie[j].token_type;
+                    }
+                    q.push(u);
+                }
+            }
+        }
 
-        lines.append("inline std::string token_to_string(TokenType t) {")
-        lines.append("    switch(t) {")
-        lines.append('        case TokenType::KEYWORD: return "KEYWORD";')
-        lines.append('        case TokenType::IDENTIFIER: return "IDENTIFIER";')
-        lines.append('        case TokenType::NUMBER: return "NUMBER";')
-        lines.append('        case TokenType::STRING: return "STRING";')
-        lines.append('        case TokenType::SYMBOL: return "SYMBOL";')
+        bool match_exact(const std::string& word, parser::TokenType& out_type) const {
+            int v = 0;
+            for (char ch : word) {
+                while (v && !trie[v].next.count(ch))
+                    v = trie[v].fail;
+                if (trie[v].next.count(ch))
+                    v = trie[v].next.at(ch);
+            }
+            int j = v;
+            while (j) {
+                if (trie[j].is_terminal && trie[j].word == word) {
+                    out_type = trie[j].token_type;
+                    return true;
+                }
+                j = trie[j].fail;
+            }
+            return false;
+        }
 
-        for t in self.terminals:
-            cname = self.clean_name(t, is_nonterminal=False)
-            lines.append(f'        case TokenType::{cname}: return "{cname}";')
+        void debug_print() const {
+        if(0){
+            std::cout << "🧭 Keyword trie built (" << trie.size() << " nodes):\\n";
+            for (size_t i = 0; i < trie.size(); ++i) {
+                const auto& n = trie[i];
+                if (n.is_terminal) {
+                    std::cout << "   • [" << n.word << "] → "
+                              << static_cast<int>(n.token_type) << std::endl;
+                }
+            }
+        }}
+    };
 
-        lines.append('        case TokenType::END_OF_FILE: return "EOF";')
-        lines.append("    } return \"?\"; }")
-        lines.append("\n} // namespace parser")
+    // ============================================================
+    // Лексер
+    // ============================================================
+    class Lexer {
+    public:
+        Lexer(const std::string& text, const std::string& keywords_file)
+            : source(text), pos(0), line(1), col(1)
+        {
+            load_keywords(keywords_file);
+        }
 
-        with open("out/keywords.hpp", "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
+        Token next() {
+            skip_ws_comments();
+            if (pos >= source.size())
+                return Token(parser::TokenType::END_OF_FILE, "EOF", "", line, col);
 
-    def _write_parser_hpp(self):
-        lines = [
-            "#pragma once",
-            "#include <stdexcept>",
-            "#include <string>",
-            "#include \"keywords.hpp\"",
-            "#include \"lexer.hpp\"",
-            "",
-            "namespace parser {",
-            "",
-            "struct ParseError : public std::runtime_error {",
-            "    using std::runtime_error::runtime_error;",
-            "};",
-            "",
-            "extern TokenType current;",
-            "void gc();",
-            "void parse(lexer::Lexer& lexer, const std::string& path);",
-            ""
-        ]
+            char ch = peek_char();
 
-        for head in self.rules:
-            lines.append(f"void {self.clean_name(head, is_nonterminal=True)}();")
+            if (std::isalpha(ch) || ch == '_')
+                return read_identifier_or_keyword();
+            if (std::isdigit(ch))
+                return read_number();
+            if (ch == '"' || ch == '\'')
+                return read_string();
+            return read_symbol();
+        }
 
-        lines.append("\n} // namespace parser")
+        std::vector<Token> get_all_tokens() {
+            std::vector<Token> result;
+            size_t saved_pos = pos;
+            size_t saved_line = line;
+            size_t saved_col = col;
+            
+            pos = 0;
+            line = 1;
+            col = 1;
+            
+            while (true) {
+                Token t = next();
+                result.push_back(t);
+                if (t.type == parser::TokenType::END_OF_FILE)
+                    break;
+            }
+            
+            pos = saved_pos;
+            line = saved_line;
+            col = saved_col;
+            
+            return result;
+        }
 
-        with open("out/parser.hpp", "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
+    private:
+        std::string source;
+        size_t pos;
+        size_t line, col;
+        AhoCorasick automaton;
 
-    def _write_parser_cpp(self):
-        header = dedent("""\
-            #include "parser.hpp"
-            #include <iostream>
-            #include <vector>
-            #include <fstream>
-
-            namespace parser {
-            static lexer::Lexer* current_lexer = nullptr;
-            TokenType current = TokenType::END_OF_FILE;
-
-            static std::vector<std::string> call_stack;
-
-            static void debug_token(const std::string& where) {
-                std::cout << "🔎 [" << where << "] current token: "
-                          << token_to_string(current) << std::endl;
+        void load_keywords(const std::string& file) {
+            std::ifstream in(file);
+            if (!in.is_open()) {
+                std::cerr << "⚠️ Could not open keyword file: " << file << std::endl;
+                return;
             }
 
-            void gc() {
-                if (!current_lexer)
-                    throw std::runtime_error("Lexer not initialized");
-                current = current_lexer->next().type;
-                std::cout << "➡️ gc(): now current = " << token_to_string(current) << std::endl;
+            std::string kw;
+            while (std::getline(in, kw)) {
+                if (!kw.empty()) {
+                    std::cout << "📘 Loading keyword: [" << kw << "]" << std::endl;
+                    parser::TokenType t = parser::TokenType::IDENTIFIER;
+                    if (kw == "int") t = parser::TokenType::TOK_INT;
+                    else if (kw == "float") t = parser::TokenType::TOK_FLOAT;
+                    else if (kw == "double") t = parser::TokenType::TOK_DOUBLE;
+                    else if (kw == "if") t = parser::TokenType::TOK_IF;
+                    else if (kw == "else") t = parser::TokenType::TOK_ELSE;
+                    else if (kw == "while") t = parser::TokenType::TOK_WHILE;
+                    else if (kw == "return") t = parser::TokenType::TOK_RETURN;
+                    else if (kw == "class") t = parser::TokenType::TOK_CLASS;
+                    automaton.insert(kw, t);
+                }
             }
+            automaton.build();
+            automaton.debug_print();
+        }
 
-            void parse(lexer::Lexer& lexer, const std::string& path) {
-                current_lexer = &lexer;
-                gc();
-                std::cout << "\\n📘 Parsing file: " << path << std::endl;
-                try {
-                    TOK_PROGRAM();
-                    std::cout << "\\n✅ Parsing completed successfully.\\n";
-                } catch (const ParseError& e) {
-                    std::cerr << "\\n❌ Parse failed: " << e.what() << std::endl;
-                    std::cerr << "Call stack (on error):\\n";
-                    for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
-                        std::cerr << "  • " << *it << std::endl;
+        char peek_char() const { return pos < source.size() ? source[pos] : '\0'; }
 
-                    std::ofstream out("lexer_info.txt");
-                    if (out.is_open()) {
-                        out << "LEXER DUMP (on parse error)\\n";
-                        out << "=============================\\n";
-                        try {
-                            auto tokens = current_lexer->tokenize();
-                            for (const auto& t : tokens) {
-                                out << "Type: " << token_to_string(t.type)
-                                    << ", Name: " << t.name
-                                    << ", Value: " << t.value
-                                    << ", Line: " << t.line
-                                    << ", Col: " << t.col << "\\n";
-                            }
-                        } catch (const std::exception& le) {
-                            out << "[Lexer dump failed: " << le.what() << "]\\n";
-                        }
-                        out.close();
-                        std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
+        char get_char() {
+            char c = peek_char();
+            if (c == '\n') { line++; col = 1; }
+            else col++;
+            pos++;
+            return c;
+        }
+
+        void skip_ws_comments() {
+            while (pos < source.size()) {
+                if (std::isspace(peek_char())) { get_char(); continue; }
+                if (peek_char() == '/' && pos + 1 < source.size()) {
+                    if (source[pos + 1] == '/') {
+                        while (pos < source.size() && get_char() != '\n');
+                        continue;
+                    } else if (source[pos + 1] == '*') {
+                        pos += 2;
+                        while (pos + 1 < source.size() &&
+                              !(source[pos] == '*' && source[pos + 1] == '/'))
+                            get_char();
+                        pos += 2;
+                        continue;
                     }
                 }
+                break;
+            }
+        }
+
+        Token read_identifier_or_keyword() {
+            size_t start = pos, start_col = col;
+            while (std::isalnum(peek_char()) || peek_char() == '_')
+                get_char();
+
+            std::string word = source.substr(start, pos - start);
+            parser::TokenType t = parser::TokenType::IDENTIFIER;
+            if (automaton.match_exact(word, t)) {
+                std::cout << "🔹 Matched keyword: [" << word << "] → "
+                          << static_cast<int>(t) << std::endl;
+                return Token(t, word, word, line, start_col);
             }
 
-            struct CallContext {
-                std::string name;
-                CallContext(const std::string& n) : name(n) {
-                    call_stack.push_back(n);
-                    std::cout << "\\n➡️ Enter <" << n << ">" << std::endl;
-                    debug_token(n);
-                }
-                ~CallContext() {
-                    std::cout << "⬅️ Leave <" << name << ">\\n";
-                    call_stack.pop_back();
-                }
-            };
+            std::cout << "🟡 Identifier: [" << word << "]" << std::endl;
+            return Token(parser::TokenType::IDENTIFIER, word, word, line, start_col);
+        }
 
-            static void syntax_error(const std::string& msg) {
-                std::cerr << "\\n❌ Syntax error: " << msg << "\\n";
-                std::cerr << "Call stack:" << std::endl;
-                for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
-                    std::cerr << "  in <" << *it << ">" << std::endl;
-                throw ParseError(msg);
+        Token read_number() {
+            size_t start = pos, start_col = col;
+            bool has_dot = false;
+
+            while (std::isdigit(peek_char()) || (!has_dot && peek_char() == '.')) {
+                if (peek_char() == '.') has_dot = true;
+                get_char();
             }
-        """)
 
-        # --- функции ---
-        functions = [self._gen_function(head) for head in self.rules]
-
-        # --- футер ---
-        footer = "\n} // namespace parser\n"
-
-        with open("out/parser.cpp", "w", encoding="utf-8") as f:
-            f.write(header + "\n\n".join(functions) + footer)
-
-
-    # ================================================================
-    # Основная генерация функций
-    # ================================================================
-    def _gen_function(self, head):
-        name = self.clean_name(head, is_nonterminal=True)
-        lines = [f"void {name}() {{", f"    CallContext ctx(\"{name}\");"]
-        alts = self.rules[head]
-
-        for i, alt in enumerate(alts):
-            prefix = "if" if i == 0 else "else if"
-            if not alt:
-                lines.append(f"    {prefix} (true) {{ /* ε */ return; }}")
-                continue
-
-            cond = self._make_condition(alt)
-            lines.append(f"    {prefix} ({cond}) {{")
-            for sym in alt:
-                if self._is_nonterm(sym):
-                    lines.append(f"        {self.clean_name(sym, True)}();")
-                else:
-                    token = self.clean_name(sym, False)
-                    lines.append(f"        if (current != TokenType::{token}) "
-                                 f"syntax_error(\"expected {token} in {name}\");")
-                    lines.append("        gc();")
-            lines.append("        return; }")
-
-        lines.append(f"    syntax_error(\"unexpected token in {name}\");")
-        lines.append("}")
-        return "\n".join(lines)
-
-    def _make_condition(self, alt):
-        """Новая версия: использует FIRST множества."""
-        if not alt:
-            return "true"
-        first_sym = alt[0]
-        first_set = self._first_of_symbol(first_sym)
-        if "__EPS" in first_set:
-            return "true"
-        if not first_set:
-            return "true"
-        items = sorted(first_set)
-        if len(items) == 1:
-            return f"current == {items[0]}"
-        return " || ".join(f"current == {it}" for it in items)
-
-    @staticmethod
-    def _is_nonterm(sym):
-        return sym.startswith("<") and sym.endswith(">")
-
-    @staticmethod
-    def clean_name(sym, is_nonterminal=False):
-        s = sym.strip()
-        if is_nonterminal or (s.startswith("<") and s.endswith(">")):
-            s = s.strip("<>")
-            return "TOK_" + re.sub(r'[^A-Za-z0-9_]+', '_', s.upper())
-
-        s = s.strip('"')
-        special_map = {
-            "!=": "TOK_NEQ", "==": "TOK_EQEQ", "&&": "TOK_ANDAND", "||": "TOK_OROR",
-            "<=": "TOK_LEQ", ">=": "TOK_GEQ", "->": "TOK_ARROW", "=>": "TOK_FATARROW",
-            "::": "TOK_SCOPE", ":=": "TOK_ASSIGN"
+            std::string val = source.substr(start, pos - start);
+            std::cout << "🔢 Number: [" << val << "]" << std::endl;
+            return Token(parser::TokenType::NUMBER, val, val, line, start_col);
         }
-        if s in special_map:
-            return special_map[s]
 
-        single_map = {
-            '+': 'PLUS', '-': 'MINUS', '*': 'STAR', '/': 'SLASH', '=': 'EQUAL',
-            '(': 'LPAREN', ')': 'RPAREN', '{': 'LBRACE', '}': 'RBRACE',
-            '[': 'LBRACKET', ']': 'RBRACKET', ';': 'SEMICOLON', ':': 'COLON',
-            ',': 'COMMA', '.': 'DOT', '"': 'QUOTE', '\'': 'APOSTROPHE',
-            '<': 'LT', '>': 'GT', '!': 'EXCL', '?': 'QMARK', '|': 'PIPE',
-            '&': 'AMP', '%': 'PERCENT', '^': 'CARET', '#': 'HASH',
-            '@': 'AT', '$': 'DOLLAR', '~': 'TILDE', '\\': 'BACKSLASH'
+        Token read_string() {
+            char quote = get_char();
+            size_t start_col = col;
+            std::string val;
+            while (pos < source.size() && peek_char() != quote) {
+                if (peek_char() == '\\') val += get_char();
+                val += get_char();
+            }
+            get_char();
+            std::cout << "💬 String: [" << val << "]" << std::endl;
+            return Token(parser::TokenType::STRING, val, val, line, start_col);
         }
-        if len(s) == 1 and not s.isalnum():
-            return "TOK_" + single_map.get(s, f"SYM_{ord(s)}")
 
-        if not s.isidentifier():
-            code = "_".join(str(ord(ch)) for ch in s)
-            return f"TOK_REGEX_{code}"
+        Token read_symbol() {
+            size_t start_col = col;
+            std::string sym(1, get_char());
+            
+            // Проверка двухсимвольных операторов
+            if (pos < source.size()) {
+                std::string two = sym + peek_char();
+                static const std::vector<std::string> ops = {
+                    "==","!=",">=","<=","&&","||","++","--","->","+=","-=","*=","/="
+                };
+                if (std::find(ops.begin(), ops.end(), two) != ops.end()) {
+                    get_char();
+                    sym = two;
+                }
+            }
+            
+            // Определяем правильный тип токена
+            parser::TokenType type = symbol_to_token_type(sym);
+            
+            std::cout << "⚙️ Symbol: [" << sym << "] → " 
+                      << parser::token_to_string(type) << std::endl;
+            return Token(type, sym, sym, line, start_col);
+        }
+    };
 
-        s = re.sub(r'[^A-Za-z0-9_]+', '_', s)
-        return "TOK_" + s.upper()
+    } // namespace lexer
+    ''')
 
-
-# ================================================================
-# 4. Точка входа
-# ================================================================
-def main():
-    grammar_file = "grammar.txt"
-    cleaner = GrammarCleaner(grammar_file)
-    cleaner.clean()
-    grammar = FormalGrammarParser(grammar_file)
-    rules = grammar.parse()
-    gen = CppRecursiveDescentGen(rules, grammar.terminals)
-    gen.generate_all()
+    ensure_out_dir()
+    with open(OUT_FILE, "w", encoding="utf-8") as f:
+        f.write(header)
+    print(f"✅ Лексер (бор/Ахо-Корасик) успешно сгенерирован: out/lexer.hpp")
 
 
 if __name__ == "__main__":
-    main()
+    generate_lexer()

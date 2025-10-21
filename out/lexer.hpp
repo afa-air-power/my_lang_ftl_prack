@@ -25,6 +25,38 @@ struct Token {
 };
 
 // ============================================================
+// Функция сопоставления символа с типом токена
+// ============================================================
+inline parser::TokenType symbol_to_token_type(const std::string& sym) {
+    static const std::unordered_map<std::string, parser::TokenType> symbol_map = {
+        {"(", parser::TokenType::TOK_LPAREN},
+        {")", parser::TokenType::TOK_RPAREN},
+        {"{", parser::TokenType::TOK_LBRACE},
+        {"}", parser::TokenType::TOK_RBRACE},
+        {";", parser::TokenType::TOK_SEMICOLON},
+        {",", parser::TokenType::TOK_COMMA},
+        {"+", parser::TokenType::TOK_PLUS},
+        {"-", parser::TokenType::TOK_MINUS},
+        {"*", parser::TokenType::TOK_STAR},
+        {"=", parser::TokenType::TOK_EQUAL},
+        {"<", parser::TokenType::TOK_LT},
+        {"!", parser::TokenType::TOK_EXCL},
+        {"==", parser::TokenType::TOK_EQEQ},
+        {"&&", parser::TokenType::TOK_ANDAND},
+        {"+=", parser::TokenType::TOK_PLUSEQUAL},
+        {"-=", parser::TokenType::TOK_MINUSEQUAL},
+        {"*=", parser::TokenType::TOK_STAREQUAL},
+        {"/=", parser::TokenType::TOK_SLASHEQUAL}
+    };
+
+    auto it = symbol_map.find(sym);
+    if (it != symbol_map.end()) {
+        return it->second;
+    }
+    return parser::TokenType::SYMBOL;
+}
+
+// ============================================================
 // Бор / автомат Ахо-Корасика с хранением типа токена
 // ============================================================
 class AhoCorasick {
@@ -138,20 +170,32 @@ public:
         return read_symbol();
     }
 
-    std::vector<Token> tokenize() {
-        tokens.clear();
+    std::vector<Token> get_all_tokens() {
+        std::vector<Token> result;
+        size_t saved_pos = pos;
+        size_t saved_line = line;
+        size_t saved_col = col;
+
+        pos = 0;
+        line = 1;
+        col = 1;
+
         while (true) {
             Token t = next();
-            tokens.push_back(t);
+            result.push_back(t);
             if (t.type == parser::TokenType::END_OF_FILE)
                 break;
         }
-        return tokens;
+
+        pos = saved_pos;
+        line = saved_line;
+        col = saved_col;
+
+        return result;
     }
 
 private:
     std::string source;
-    std::vector<Token> tokens;
     size_t pos;
     size_t line, col;
     AhoCorasick automaton;
@@ -260,18 +304,25 @@ private:
     Token read_symbol() {
         size_t start_col = col;
         std::string sym(1, get_char());
+
+        // Проверка двухсимвольных операторов
         if (pos < source.size()) {
             std::string two = sym + peek_char();
             static const std::vector<std::string> ops = {
-                "==","!=",">=","<=","&&","||","++","--","->"
+                "==","!=",">=","<=","&&","||","++","--","->","+=","-=","*=","/="
             };
             if (std::find(ops.begin(), ops.end(), two) != ops.end()) {
                 get_char();
                 sym = two;
             }
         }
-        std::cout << "⚙️ Symbol: [" << sym << "]" << std::endl;
-        return Token(parser::TokenType::SYMBOL, sym, sym, line, start_col);
+
+        // Определяем правильный тип токена
+        parser::TokenType type = symbol_to_token_type(sym);
+
+        std::cout << "⚙️ Symbol: [" << sym << "] → " 
+                  << parser::token_to_string(type) << std::endl;
+        return Token(type, sym, sym, line, start_col);
     }
 };
 

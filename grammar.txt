@@ -1,14 +1,14 @@
 <Program> -> <DeclarationList>
 <DeclarationList> -> <Declaration> <DeclarationList> | ε
 <Declaration> -> <FunctionDecl>
-<VarDecl> -> <Type> <Identifier> <VarDeclRest> ";"
+<VarDecl> -> <Type> IDENTIFIER <VarDeclRest> ";"
 <VarDeclRest> -> "=" <Expression> | ε
 <Type> -> "int" | "float" | "double"
-<FunctionDecl> -> <Type> <Identifier> "(" <ParamList> ")" <CompoundStmt>
+<FunctionDecl> -> <Type> IDENTIFIER "(" <ParamList> ")" <CompoundStmt>
 <ParamList> -> <Param> <ParamListRest> | ε
 <ParamListRest> -> "," <Param> <ParamListRest> | ε
-<Param> -> <Type> <Identifier>
-<ClassDecl> -> "class" <Identifier> "{" <MemberList> "}" ";"
+<Param> -> <Type> IDENTIFIER
+<ClassDecl> -> "class" IDENTIFIER "{" <MemberList> "}" ";"
 <MemberList> -> <Member> <MemberList> | ε
 <Member> -> <VarDecl>
 <CompoundStmt> -> "{" <StmtList> "}"
@@ -23,7 +23,7 @@
 <AssignmentExpr> -> <LogicalOrExpr> <AssignOp> <AssignmentExpr> | <LogicalOrExpr>
 <AssignOp> -> "=" | "+=" | "-=" | "*=" | "/="
 <LogicalOrExpr> -> <LogicalAndExpr> <LogicalOrRest>
-<LogicalOrRest> -> " | | " <LogicalAndExpr> <LogicalOrRest> | ε
+<LogicalOrRest> -> "||" <LogicalAndExpr> <LogicalOrRest> | ε
 <LogicalAndExpr> -> <EqualityExpr> <LogicalAndRest>
 <LogicalAndRest> -> "&&" <EqualityExpr> <LogicalAndRest> | ε
 <EqualityExpr> -> <RelationalExpr> <EqRest>
@@ -35,12 +35,8 @@
 <Term> -> <Factor> <TermRest>
 <TermRest> -> "*" <Factor> <TermRest> | ε
 <Factor> -> <Primary> | "-" <Factor> | "!" <Factor>
-<Primary> -> <Literal> | <Identifier> | <FunctionCall>
-<FunctionCall> -> <Identifier> "(" <ArgList> ")"
+<Primary> -> <Literal> | IDENTIFIER | <FunctionCall>
+<FunctionCall> -> IDENTIFIER "(" <ArgList> ")"
 <ArgList> -> <Expression> <ArgListRest> | ε
 <ArgListRest> -> "," <Expression> <ArgListRest> | ε
-<Literal> -> <IntegerLiteral> | <FloatLiteral> | <StringLiteral>
-<IntegerLiteral> -> TOK_NUMBER
-<FloatLiteral> -> TOK_NUMBER
-<StringLiteral> -> TOK_STRING
-<Identifier> -> TOK_IDENTIFIER
+<Literal> -> NUMBER | STRING
