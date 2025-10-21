@@ -391,7 +391,7 @@ class CppRecursiveDescentGen:
                     lines.append("        gc();")
             lines.append("        return; }")
 
-        lines.append(f"    syntax_error(\"unexpected token in {name}\");")
+        lines.append(f'    syntax_error(\"unexpected token "+token_to_string(current)+"  in {name}\");')
         lines.append("}")
         return "\n".join(lines)
 
