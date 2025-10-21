@@ -56,7 +56,7 @@ class GrammarCleaner:
             for ln in cleaned:
                 f.write(ln + "\n")
 
-        print(f"🧹 Очистка завершена. Сохранена резервная копия: {backup}")
+        print(f"Очистка завершена. Сохранена резервная копия: {backup}")
 
 
 # ================================================================
@@ -179,7 +179,7 @@ class CppRecursiveDescentGen:
         self._write_keywords_hpp()
         self._write_parser_hpp()
         self._write_parser_cpp()
-        print("✅ Генерация завершена: parser.cpp/hpp и keywords.hpp созданы.")
+        print(" Генерация завершена: parser.cpp/hpp и keywords.hpp созданы.")
 
     def _write_reserved_list(self):
         with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:

@@ -352,7 +352,7 @@ def generate_lexer():
     ensure_out_dir()
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         f.write(header)
-    print(f"✅ Лексер (бор/Ахо-Корасик) успешно сгенерирован: out/lexer.hpp")
+    print(f" Лексер (бор/Ахо-Корасик) успешно сгенерирован: out/lexer.hpp")
 
 
 if __name__ == "__main__":
