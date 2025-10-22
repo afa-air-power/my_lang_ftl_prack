@@ -20,7 +20,8 @@
 <ReturnStmt> -> "return" <Expression> ";"
 <ExpressionStmt> -> <Expression> ";"
 <Expression> -> <AssignmentExpr>
-<AssignmentExpr> -> <LogicalOrExpr> | <LogicalOrExpr> <AssignOp> <AssignmentExpr>
+<tmp_LogicalOrExpr> -> ε| <AssignOp> <AssignmentExpr>
+<AssignmentExpr> -> <LogicalOrExpr> <tmp_LogicalOrExpr>
 <AssignOp> -> "=" | "+=" | "-=" | "*=" | "/="
 <LogicalOrExpr> -> <LogicalAndExpr> <LogicalOrRest>
 <LogicalOrRest> -> " | | " <LogicalAndExpr> <LogicalOrRest> | ε
