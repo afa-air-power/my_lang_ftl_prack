@@ -20,7 +20,7 @@
 <ReturnStmt> -> "return" <Expression> ";"
 <ExpressionStmt> -> <Expression> ";"
 <Expression> -> <AssignmentExpr>
-<tmp_LogicalOrExpr> -> ε| <AssignOp> <AssignmentExpr>
+<tmp_LogicalOrExpr> -> ε | <AssignOp> <AssignmentExpr>
 <AssignmentExpr> -> <LogicalOrExpr> <tmp_LogicalOrExpr>
 <AssignOp> -> "=" | "+=" | "-=" | "*=" | "/="
 <LogicalOrExpr> -> <LogicalAndExpr> <LogicalOrRest>
@@ -40,4 +40,38 @@
 <FunctionCall> -> IDENTIFIER "(" <ArgList> ")"
 <ArgList> -> <Expression> <ArgListRest> | ε
 <ArgListRest> -> "," <Expression> <ArgListRest> | ε
+<Literal> -> NUMBER | STRING
+<Expression> -> <expr01> // самый низкий приоритет
+<expr01> -> <expr02> <expr01Rest>
+<expr01Rest> -> "," <expr02> <expr01Rest> | ε
+<expr02> -> <expr03> <expr02Rest>
+<expr02Rest> -> <AssignOp> <expr02> | ε
+<AssignOp> -> "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | "&=" | " | =" | "^="
+<expr03> -> <expr04> <expr03Rest>
+<expr03Rest> -> "?" <expr02> ":" <expr03> | ε
+<expr04> -> <expr05> <expr04Rest>
+<expr04Rest> -> " | | " <expr05> <expr04Rest> | ε
+<expr05> -> <expr06> <expr05Rest>
+<expr05Rest> -> "&&" <expr06> <expr05Rest> | ε
+<expr06> -> <expr07> <expr06Rest>
+<expr06Rest> -> " | " <expr07> <expr06Rest> | ε
+<expr07> -> <expr08> <expr07Rest>
+<expr07Rest> -> "^" <expr08> <expr07Rest> | ε
+<expr08> -> <expr09> <expr08Rest>
+<expr08Rest> -> "&" <expr09> <expr08Rest> | ε
+<expr09> -> <expr10> <expr09Rest>
+<expr09Rest> -> "==" <expr10> <expr09Rest> | "!=" <expr10> <expr09Rest> | ε
+<expr10> -> <expr11> <expr10Rest>
+<expr10Rest> -> "<" <expr11> <expr10Rest>
+<expr11> -> <expr12> <expr11Rest>
+<expr11Rest> -> "<<" <expr12> <expr11Rest> | ">>" <expr12> <expr11Rest> | ε
+<expr12> -> <expr13> <expr12Rest>
+<expr12Rest> -> "+" <expr13> <expr12Rest> | "-" <expr13> <expr12Rest> | ε
+<expr13> -> <expr14> <expr13Rest>
+<expr13Rest> -> "*" <expr14> <expr13Rest> | "/" <expr14> <expr13Rest> | "%" <expr14> <expr13Rest> | ε
+<expr14> -> <UnaryOp> <expr14> | <expr15>
+<UnaryOp> -> "!" | "-" | "++" | "--"
+<expr15> -> <Primary> <expr15Rest>
+<expr15Rest> -> "++" <expr15Rest>
+<expr16> -> "(" <Expression> ")" | IDENTIFIER | <Literal>
 <Literal> -> NUMBER | STRING

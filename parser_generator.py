@@ -297,40 +297,61 @@ class CppRecursiveDescentGen:
                 std::cout << "➡️ gc(): now current = " << token_to_string(current) << std::endl;
             }
 
-            void parse(lexer::Lexer& lexer, const std::string& path) {
-                current_lexer = &lexer;
-                gc();
-                std::cout << "\\n📘 Parsing file: " << path << std::endl;
-                try {
-                    TOK_PROGRAM();
-                    std::cout << "\\n✅ Parsing completed successfully.\\n";
-                } catch (const ParseError& e) {
-                    std::cerr << "\\n❌ Parse failed: " << e.what() << std::endl;
-                    std::cerr << "Call stack (on error):\\n";
-                    for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
-                        std::cerr << "  • " << *it << std::endl;
-
-                    std::ofstream out("lexer_info.txt");
-                    if (out.is_open()) {
-                        out << "LEXER DUMP (on parse error)\\n";
-                        out << "=============================\\n";
-                        try {
-                            auto tokens = current_lexer->get_all_tokens();
-                            for (const auto& t : tokens) {
-                                out << "Type: " << token_to_string(t.type)
-                                    << ", Name: " << t.name
-                                    << ", Value: " << t.value
-                                    << ", Line: " << t.line
-                                    << ", Col: " << t.col << "\\n";
-                            }
-                        } catch (const std::exception& le) {
-                            out << "[Lexer dump failed: " << le.what() << "]\\n";
-                        }
-                        out.close();
-                        std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
-                    }
+           void parse(lexer::Lexer& lexer, const std::string& path) {
+    current_lexer = &lexer;
+    gc();
+    
+    std::cout << "📘 Parsing file: " << path << std::endl;
+    try {
+        std::ofstream out("lexer_info.txt");
+        if (out.is_open()) {
+            out << "LEXER DUMP (on parse error)\\n";
+            out << "=============================\\n";
+            try {
+                auto tokens = current_lexer->get_all_tokens();
+                for (const auto& t : tokens) {
+                    out << "Type: " << token_to_string(t.type)
+                        << ", Name: " << t.name
+                        << ", Value: " << t.value
+                        << ", Line: " << t.line
+                        << ", Col: " << t.col << "\\n";
                 }
+            } catch (const std::exception& le) {
+                out << "[Lexer dump failed: " << le.what() << "]\\n";
             }
+            out.close();
+            std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
+        }
+        TOK_PROGRAM();
+        std::cout << "\\n Parsing completed successfully.\\n";
+    } catch (const ParseError& e) {
+        std::cerr << "\\n Parse failed: " << e.what() << std::endl;
+        std::cerr << "Call stack (on error):\\n";
+        for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
+            std::cerr << "  • " << *it << std::endl;
+
+        std::ofstream out("lexer_info.txt");
+        if (out.is_open()) {
+            out << "LEXER DUMP (on parse error)\\n";
+            out << "=============================\\n";
+            try {
+                auto tokens = current_lexer->get_all_tokens();
+                for (const auto& t : tokens) {
+                    out << "Type: " << token_to_string(t.type)
+                        << ", Name: " << t.name
+                        << ", Value: " << t.value
+                        << ", Line: " << t.line
+                        << ", Col: " << t.col << "\\n";
+                }
+            } catch (const std::exception& le) {
+                out << "[Lexer dump failed: " << le.what() << "]\\n";
+            }
+            out.close();
+            std::cerr << " Lexer dump written to lexer_info.txt\\n";
+        }
+    }
+}
+            
 
             struct CallContext {
                 std::string name;
@@ -426,8 +447,7 @@ class CppRecursiveDescentGen:
         special_map = {
             "!=": "TOK_NEQ", "==": "TOK_EQEQ", "&&": "TOK_ANDAND", "||": "TOK_OROR",
             "<=": "TOK_LEQ", ">=": "TOK_GEQ", "->": "TOK_ARROW", "=>": "TOK_FATARROW",
-            "::": "TOK_SCOPE", ":=": "TOK_ASSIGN",
-            "+=": "TOK_PLUSEQUAL", "-=": "TOK_MINUSEQUAL",
+            "::": "TOK_SCOPE", ":=": "TOK_ASSIGN", "-=": "TOK_MINUSEQUAL",
             "*=": "TOK_STAREQUAL", "/=": "TOK_SLASHEQUAL"
         }
         if s in special_map:
