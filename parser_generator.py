@@ -168,7 +168,9 @@ class CppRecursiveDescentGen:
             return set(self.first.get(sym, set()))
         else:
             token_name = self.clean_name(sym, is_nonterminal=False)
-            return {f"TokenType::{token_name}"}
+            if token_name:
+                return {f"TokenType::{token_name}"}
+            return set()
 
     # ================================================================
     # Генерация файлов
@@ -183,11 +185,15 @@ class CppRecursiveDescentGen:
 
     def _write_reserved_list(self):
         with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:
+            seen = set()
             for t in self.terminals:
-                # Пропускаем базовые типы токенов - они уже есть в TokenType
+                # Пропускаем базовые типы токенов
                 if t in ["IDENTIFIER", "NUMBER", "STRING"]:
                     continue
-                f.write(f"{t.strip('"')}\n")
+                clean = t.strip('"').strip()
+                if clean and clean not in seen:
+                    seen.add(clean)
+                    f.write(f"{clean}\n")
 
     def _write_keywords_hpp(self):
         lines = [
@@ -206,23 +212,32 @@ class CppRecursiveDescentGen:
             "    NUMBER,",
             "    STRING,",
             "    SYMBOL,",
+            "    None,",
             "",
         ]
 
+        # Собираем уникальные имена токенов
         seen = set()
+        token_names = []
+
         for t in self.terminals:
             # Пропускаем базовые типы - они уже добавлены выше
             if t in ["IDENTIFIER", "NUMBER", "STRING"]:
                 continue
+
             cname = self.clean_name(t, is_nonterminal=False)
-            if cname in seen:
-                continue
-            seen.add(cname)
+            if cname and cname not in seen:
+                seen.add(cname)
+                token_names.append(cname)
+
+        # Добавляем токены в enum
+        for cname in sorted(token_names):
             lines.append(f"    {cname},")
 
         lines.append("    END_OF_FILE")
         lines.append("};\n")
 
+        # Генерируем функцию token_to_string
         lines.append("inline std::string token_to_string(TokenType t) {")
         lines.append("    switch(t) {")
         lines.append('        case TokenType::KEYWORD: return "KEYWORD";')
@@ -230,11 +245,10 @@ class CppRecursiveDescentGen:
         lines.append('        case TokenType::NUMBER: return "NUMBER";')
         lines.append('        case TokenType::STRING: return "STRING";')
         lines.append('        case TokenType::SYMBOL: return "SYMBOL";')
+        lines.append('        case TokenType::None: return "None";')
 
-        for t in self.terminals:
-            if t in ["IDENTIFIER", "NUMBER", "STRING"]:
-                continue
-            cname = self.clean_name(t, is_nonterminal=False)
+        # Добавляем case для каждого токена
+        for cname in sorted(token_names):
             lines.append(f'        case TokenType::{cname}: return "{cname}";')
 
         lines.append('        case TokenType::END_OF_FILE: return "EOF";')
@@ -323,9 +337,9 @@ class CppRecursiveDescentGen:
             std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
         }
         TOK_PROGRAM();
-        std::cout << "\\n Parsing completed successfully.\\n";
+        std::cout << "\\n✅ Parsing completed successfully.\\n";
     } catch (const ParseError& e) {
-        std::cerr << "\\n Parse failed: " << e.what() << std::endl;
+        std::cerr << "\\n❌ Parse failed: " << e.what() << std::endl;
         std::cerr << "Call stack (on error):\\n";
         for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
             std::cerr << "  • " << *it << std::endl;
@@ -347,7 +361,7 @@ class CppRecursiveDescentGen:
                 out << "[Lexer dump failed: " << le.what() << "]\\n";
             }
             out.close();
-            std::cerr << " Lexer dump written to lexer_info.txt\\n";
+            std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
         }
     }
 }
@@ -412,7 +426,7 @@ class CppRecursiveDescentGen:
                     lines.append("        gc();")
             lines.append("        return; }")
 
-        lines.append(f'    syntax_error(\"unexpected token "+token_to_string(current)+"  in {name}\");')
+        lines.append(f'    syntax_error(\"unexpected token \"+token_to_string(current)+\" in {name}\");')
         lines.append("}")
         return "\n".join(lines)
 
@@ -438,21 +452,35 @@ class CppRecursiveDescentGen:
     @staticmethod
     def clean_name(sym, is_nonterminal=False):
         s = sym.strip()
-        if sym in ['IDENTIFIER','STRING','NUMBER']: return s
+        if sym in ['IDENTIFIER','STRING','NUMBER']:
+            return s
+
         if is_nonterminal or (s.startswith("<") and s.endswith(">")):
             s = s.strip("<>")
             return "TOK_" + re.sub(r'[^A-Za-z0-9_]+', '_', s.upper())
 
-        s = s.strip('"')
+        # Убираем кавычки
+        s = s.strip('"').strip()
+
+        # Пустые строки пропускаем
+        if not s:
+            return None
+
+        # Специальные двухсимвольные операторы
         special_map = {
             "!=": "TOK_NEQ", "==": "TOK_EQEQ", "&&": "TOK_ANDAND", "||": "TOK_OROR",
             "<=": "TOK_LEQ", ">=": "TOK_GEQ", "->": "TOK_ARROW", "=>": "TOK_FATARROW",
-            "::": "TOK_SCOPE", ":=": "TOK_ASSIGN", "-=": "TOK_MINUSEQUAL",
-            "*=": "TOK_STAREQUAL", "/=": "TOK_SLASHEQUAL"
+            "::": "TOK_SCOPE", ":=": "TOK_ASSIGN", "+=": "TOK_PLUSEQUAL",
+            "-=": "TOK_MINUSEQUAL", "*=": "TOK_STAREQUAL", "/=": "TOK_SLASHEQUAL",
+            "%=": "TOK_PERCENTEQUAL", "<<=": "TOK_LSHIFTEQUAL", ">>=": "TOK_RSHIFTEQUAL",
+            "&=": "TOK_AMPEQUAL", "|=": "TOK_PIPEEQUAL", "^=": "TOK_CARETEQUAL",
+            "<<": "TOK_LSHIFT", ">>": "TOK_RSHIFT", "++": "TOK_PLUSPLUS", "--": "TOK_MINUSMINUS",
+            '=': 'TOK_EQUAL'
         }
         if s in special_map:
             return special_map[s]
 
+        # Односимвольные операторы
         single_map = {
             '+': 'PLUS', '-': 'MINUS', '*': 'STAR', '/': 'SLASH', '=': 'EQUAL',
             '(': 'LPAREN', ')': 'RPAREN', '{': 'LBRACE', '}': 'RBRACE',
@@ -465,12 +493,15 @@ class CppRecursiveDescentGen:
         if len(s) == 1 and not s.isalnum():
             return "TOK_" + single_map.get(s, f"SYM_{ord(s)}")
 
-        if not s.isidentifier():
-            code = "_".join(str(ord(ch)) for ch in s)
-            return f"TOK_REGEX_{code}"
+        # Ключевые слова и идентификаторы
+        if s.isidentifier():
+            return "TOK_" + s.upper()
 
+        # Для всего остального - создаём безопасное имя
         s = re.sub(r'[^A-Za-z0-9_]+', '_', s)
-        return "TOK_" + s.upper()
+        if s:
+            return "TOK_" + s.upper()
+        return None
 
 
 # ================================================================

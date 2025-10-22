@@ -1,8 +1,8 @@
 <Program> -> <DeclarationList>
 <DeclarationList> -> <Declaration> <DeclarationList> | ε
-<Declaration> -> <FunctionDecl>
+<Declaration> -> <FunctionDecl> | <VarDecl> | <ClassDecl>
 <VarDecl> -> <Type> IDENTIFIER <VarDeclRest> ";"
-<VarDeclRest> -> "=" <Expression> | ε
+<VarDeclRest> -> <Equal> <Expression> | ε
 <Type> -> "int" | "float" | "double"
 <FunctionDecl> -> <Type> IDENTIFIER "(" <ParamList> ")" <CompoundStmt>
 <ParamList> -> <Param> <ParamListRest> | ε
@@ -19,34 +19,13 @@
 <WhileStmt> -> "while" "(" <Expression> ")" <Statement>
 <ReturnStmt> -> "return" <Expression> ";"
 <ExpressionStmt> -> <Expression> ";"
-<Expression> -> <AssignmentExpr>
-<tmp_LogicalOrExpr> -> ε | <AssignOp> <AssignmentExpr>
-<AssignmentExpr> -> <LogicalOrExpr> <tmp_LogicalOrExpr>
-<AssignOp> -> "=" | "+=" | "-=" | "*=" | "/="
-<LogicalOrExpr> -> <LogicalAndExpr> <LogicalOrRest>
-<LogicalOrRest> -> " | | " <LogicalAndExpr> <LogicalOrRest> | ε
-<LogicalAndExpr> -> <EqualityExpr> <LogicalAndRest>
-<LogicalAndRest> -> "&&" <EqualityExpr> <LogicalAndRest> | ε
-<EqualityExpr> -> <RelationalExpr> <EqRest>
-<EqRest> -> "==" <RelationalExpr> <EqRest> | ε
-<RelationalExpr> -> <AddExpr> <RelRest>
-<RelRest> -> "<" <AddExpr> <RelRest> | ε
-<AddExpr> -> <Term> <AddRest>
-<AddRest> -> "+" <Term> <AddRest> | ε
-<Term> -> <Factor> <TermRest>
-<TermRest> -> "*" <Factor> <TermRest> | ε
-<Factor> -> <Primary> | "-" <Factor> | "!" <Factor>
-<Primary> -> <Literal> | IDENTIFIER | <FunctionCall>
-<FunctionCall> -> IDENTIFIER "(" <ArgList> ")"
-<ArgList> -> <Expression> <ArgListRest> | ε
-<ArgListRest> -> "," <Expression> <ArgListRest> | ε
-<Literal> -> NUMBER | STRING
-<Expression> -> <expr01> // самый низкий приоритет
+<Expression> -> <expr01>
 <expr01> -> <expr02> <expr01Rest>
 <expr01Rest> -> "," <expr02> <expr01Rest> | ε
 <expr02> -> <expr03> <expr02Rest>
 <expr02Rest> -> <AssignOp> <expr02> | ε
-<AssignOp> -> "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | "&=" | " | =" | "^="
+<Equal> -> "="
+<AssignOp> -> <Equal> | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | "&=" | " | =" | "^="
 <expr03> -> <expr04> <expr03Rest>
 <expr03Rest> -> "?" <expr02> ":" <expr03> | ε
 <expr04> -> <expr05> <expr04Rest>
@@ -62,7 +41,7 @@
 <expr09> -> <expr10> <expr09Rest>
 <expr09Rest> -> "==" <expr10> <expr09Rest> | "!=" <expr10> <expr09Rest> | ε
 <expr10> -> <expr11> <expr10Rest>
-<expr10Rest> -> "<" <expr11> <expr10Rest>
+<expr10Rest> -> "<" <expr11> <expr10Rest> | ">" <expr11> <expr10Rest> | "<=" <expr11> <expr10Rest> | ">=" <expr11> <expr10Rest> | ε
 <expr11> -> <expr12> <expr11Rest>
 <expr11Rest> -> "<<" <expr12> <expr11Rest> | ">>" <expr12> <expr11Rest> | ε
 <expr12> -> <expr13> <expr12Rest>
@@ -71,7 +50,10 @@
 <expr13Rest> -> "*" <expr14> <expr13Rest> | "/" <expr14> <expr13Rest> | "%" <expr14> <expr13Rest> | ε
 <expr14> -> <UnaryOp> <expr14> | <expr15>
 <UnaryOp> -> "!" | "-" | "++" | "--"
-<expr15> -> <Primary> <expr15Rest>
-<expr15Rest> -> "++" <expr15Rest>
-<expr16> -> "(" <Expression> ")" | IDENTIFIER | <Literal>
+<expr15> -> <expr16> <expr15Rest>
+<expr15Rest> -> "++" | "--" | ε
+<expr16> -> "(" <Expression> ")" | IDENTIFIER | <Literal> | <FunctionCall>
+<FunctionCall> -> IDENTIFIER "(" <ArgList> ")"
+<ArgList> -> <Expression> <ArgListRest> | ε
+<ArgListRest> -> "," <Expression> <ArgListRest> | ε
 <Literal> -> NUMBER | STRING
