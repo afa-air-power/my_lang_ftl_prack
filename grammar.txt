@@ -4,14 +4,15 @@
 <VarDecl> -> <Type> IDENTIFIER <VarDeclRest> ";"
 <VarDeclRest> -> <Equal> <Expression> | ε
 <Type> -> "int" | "float" | "double"
-<FunctionDecl> -> <Type> IDENTIFIER "(" <ParamList> ")" <CompoundStmt>
+<LogLevel> -> "loglevel1" | "loglevel2" | "loglevel3" | "loglevel4" | "loglevel5" | "loglevel6" | ε
+<FunctionDecl> -> <Type> <LogLevel> IDENTIFIER "(" <ParamList> ")" <CompoundStmt>
 <ParamList> -> <Param> <ParamListRest> | ε
 <ParamListRest> -> "," <Param> <ParamListRest> | ε
 <Param> -> <Type> IDENTIFIER
 <ClassDecl> -> "class" IDENTIFIER "{" <MemberList> "}" ";"
 <MemberList> -> <Member> <MemberList> | ε
 <Member> -> <VarDecl> | <BalancingFunction>
-<BalancingFunction> -> <Type> IDENTIFIER "[" <Expression> "]" "{" <StmtList> "}"
+<BalancingFunction> -> <Type> <LogLevel> IDENTIFIER "[" <Expression> "]" "{" <StmtList> "}"
 <CompoundStmt> -> "{" <StmtList> "}"
 <StmtList> -> <Statement> <StmtList> | ε
 <Statement> -> <IfStmt> | <WhileStmt> | <ReturnStmt> | <ExpressionStmt> | <CompoundStmt> | <VarDecl>
@@ -53,7 +54,10 @@
 <UnaryOp> -> "!" | "-" | "++" | "--"
 <expr15> -> <expr16> <expr15Rest>
 <expr15Rest> -> "++" | "--" | ε
-<expr16> -> "(" <Expression> ")" | IDENTIFIER | <Literal> | <FunctionCall>
+<expr16> -> "(" <Expression> ")" | IDENTIFIER | <Literal> | <FunctionCall>|<iop>
+<indList> ->IDENTIFIER <indListr>
+<indListr> -> "," indList| ε
+<ino> -> "print" "("<indList>")"| input "("<indList>")"
 <FunctionCall> -> IDENTIFIER "(" <ArgList> ")"
 <ArgList> -> <Expression> <ArgListRest> | ε
 <ArgListRest> -> "," <Expression> <ArgListRest> | ε
