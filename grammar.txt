@@ -10,7 +10,8 @@
 <Param> -> <Type> IDENTIFIER
 <ClassDecl> -> "class" IDENTIFIER "{" <MemberList> "}" ";"
 <MemberList> -> <Member> <MemberList> | ε
-<Member> -> <VarDecl>
+<Member> -> <VarDecl> | <BalancingFunction>
+<BalancingFunction> -> <Type> IDENTIFIER "[" <Expression> "]" "{" <StmtList> "}"
 <CompoundStmt> -> "{" <StmtList> "}"
 <StmtList> -> <Statement> <StmtList> | ε
 <Statement> -> <IfStmt> | <WhileStmt> | <ReturnStmt> | <ExpressionStmt> | <CompoundStmt> | <VarDecl>
