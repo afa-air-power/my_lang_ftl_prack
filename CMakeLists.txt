@@ -21,14 +21,29 @@ enable_testing()
 # ⚙️  Генерация парсера и лексера при каждой сборке
 # ============================================================
 # Псевдо-цель, которая всегда выполняется (ALL) — запускает генераторы
+# Определяем путь к Python в venv
+if (WIN32)
+    set(VENV_PYTHON "${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe")
+else()
+    set(VENV_PYTHON "${CMAKE_SOURCE_DIR}/.venv/bin/python3")
+endif()
+
 add_custom_target(generate_parser_lexer ALL
-        COMMAND ${CMAKE_COMMAND} -E echo "⚙️  Генерация синтаксического анализатора и лексера..."
-        COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/parser_generator.py
-        COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/lexer_generator.py
+        COMMAND ${CMAKE_COMMAND} -E echo "⚙️ Генерация синтаксического анализатора и лексера..."
+        COMMAND ${CMAKE_COMMAND} -E env ${VENV_PYTHON} ${CMAKE_SOURCE_DIR}/parser_generator.py
+        COMMAND ${CMAKE_COMMAND} -E env ${VENV_PYTHON} ${CMAKE_SOURCE_DIR}/lexer_generator.py
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Перегенерация парсера и лексера при каждой сборке"
         VERBATIM
 )
+
+add_custom_target(regen
+        COMMAND ${CMAKE_COMMAND} -E echo "🔁 Принудительная регенерация парсера и лексера..."
+        COMMAND ${CMAKE_COMMAND} -E env ${VENV_PYTHON} ${CMAKE_SOURCE_DIR}/parser_generator.py
+        COMMAND ${CMAKE_COMMAND} -E env ${VENV_PYTHON} ${CMAKE_SOURCE_DIR}/lexer_generator.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 
 # (Опционально) Скопировать test_program.txt в binary dir, чтобы исполняемый находил его
 file(COPY ${CMAKE_SOURCE_DIR}/test_program.txt DESTINATION ${CMAKE_BINARY_DIR})
@@ -72,10 +87,3 @@ gtest_discover_tests(my_lang_tests)
 # ============================================================
 #  Удобный таргет для форсированного регенерирования (опционально)
 # ============================================================
-add_custom_target(regen
-        COMMAND ${CMAKE_COMMAND} -E echo "Forcing regeneration of parser and lexer..."
-        COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/parser_generator.py
-        COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/lexer_generator.py
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Force regeneration of parser & lexer"
-)
