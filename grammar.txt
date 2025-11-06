@@ -54,10 +54,10 @@
 <UnaryOp> -> "!" | "-" | "++" | "--"
 <expr15> -> <expr16> <expr15Rest>
 <expr15Rest> -> "++" | "--" | ε
-<expr16> -> "(" <Expression> ")" | IDENTIFIER | <Literal> | <FunctionCall>|<iop>
-<indList> ->IDENTIFIER <indListr>
-<indListr> -> "," indList| ε
-<ino> -> "print" "("<indList>")"| input "("<indList>")"
+<expr16> -> "(" <Expression> ")" | IDENTIFIER | <Literal> | <FunctionCall> | <ino>
+<indList> -> IDENTIFIER <indListr>
+<indListr> -> "," indList | ε
+<ino> -> "print" "("<indList>")" | input "("<indList>")"
 <FunctionCall> -> IDENTIFIER "(" <ArgList> ")"
 <ArgList> -> <Expression> <ArgListRest> | ε
 <ArgListRest> -> "," <Expression> <ArgListRest> | ε
