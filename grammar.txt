@@ -3,7 +3,7 @@
 <Declaration> -> <FunctionDecl> | <VarDecl> | <ClassDecl>
 <VarDecl> -> <Type> IDENTIFIER <VarDeclRest> ";"
 <VarDeclRest> -> <Equal> <Expression> | ε
-<Type> -> "int" | "float" | "double"
+<Type> -> "int" | "float" | "double" | IDENTIFIER | "vector" <Type>
 <LogLevel> -> "loglevel1" | "loglevel2" | "loglevel3" | "loglevel4" | "loglevel5" | "loglevel6" | ε
 <FunctionDecl> -> <Type> <LogLevel> IDENTIFIER "(" <ParamList> ")" <CompoundStmt>
 <ParamList> -> <Param> <ParamListRest> | ε
