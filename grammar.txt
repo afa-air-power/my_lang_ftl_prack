@@ -1,7 +1,8 @@
 <Program> -> <DeclarationList>
 <DeclarationList> -> <Declaration> <DeclarationList> | ε
 <Declaration> -> <FunctionDecl> | <VarDecl> | <ClassDecl>
-<VarDecl> -> <Type> IDENTIFIER <VarDeclRest> ";"
+<VarDecl> -> <Type> IDENTIFIER <VarDeclRest> ";"|<VectorDecl>
+<VectorDecl> -> vector<Type> IDENTIFIER;
 <VarDeclRest> -> <Equal> <Expression> | ε
 <Type> -> "int" | "float" | "double" | IDENTIFIER | "vector" <Type>
 <LogLevel> -> "loglevel1" | "loglevel2" | "loglevel3" | "loglevel4" | "loglevel5" | "loglevel6" | ε
