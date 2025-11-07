@@ -1,1 +1,413 @@
-int main() {}
+
+class human {
+    int id;
+    string name;
+    int hp;                // 0..100  — здоровье/жизненность
+    int age;               // годы
+    int date_of_bithday;   // в днях (год*365)
+    int current_day;       // локальный кэш дня — чтобы автофункции могли быстро работать
+
+    // --- Энергетика и потребности (double для точности) ---
+    double hunger;         // 0..200 (100 = критический голод)
+    double energy;         // 0..100 (0 — истощение, 100 — полная энергия)
+    double sleep_debt;     // часы накопленного недосыпа, может быть дробным
+
+    // --- Экономика ---
+    double money;          // валютный баланс (может быть дробным)
+    double income_base;    // базовый доход в день
+
+    // --- Психологические численные характеристики (scale 0..100, double) ---
+    // Большая пятёрка (Big Five) — устойчивые черты личности
+    double openness;       // 0..100 — открытость опыту
+    double conscientious;  // 0..100 — сознательность
+    double extraversion;   // 0..100 — экстраверсия
+    double agreeableness;  // 0..100 — доброжелательность
+    double neuroticism;    // 0..100 — нейротизм (высокий = более уязвим к стрессу)
+
+    // Другие важные характеристики
+    double resilience;         // 0..100 — способность восстановиться после стресса
+    double coping_skill;       // 0..100 — навыки преодоления
+    double empathy;            // 0..100 — сопереживание
+    double influenceability;   // 0..100 — насколько человек подвержен влиянию окружения
+    double leadership;         // 0..100 — склонность влиять на других
+    double social_support;     // 0..100 — доступная поддержка из сети
+    double loneliness;         // 0..100 — текущая субъективная одиночность
+    double mental_health_index;// 0..100 — агрегатное состояние (высшее = лучше)
+
+    // --- Эмоции и краткосрочные состояния ---
+    double mood;           // -100..100 (негативное -> позитивное)
+    double stress;         // 0..200 (100 — высокий стресс)
+    double anxiety;        // 0..100
+    double motivation;     // 0..100
+    double satisfaction;   // 0..100 (с жизнью/рабочая удовлетворённость)
+
+    // --- Социальная сеть — графовые структуры ---
+    vector<int> friends;                   // индексы соседей (узлов)
+    vector<double> friendship_strength;    // 0..100 — степень дружбы (отражает прочность)
+    vector<double> trust;                  // 0..100 — доверие к каждому другу
+    vector<string> relation_tag;           // "friend","colleague","partner","family" и т.д.
+
+    // --- История и записи (time series) ---
+    vector<double> mood_history;         // pushback каждый день
+    vector<double> stress_history;
+    vector<double> money_history;
+
+    // --- Параметры поведения / профиля ---
+    int profession;     // код профессии
+    int type;           // тип поведения (0 calm,1 anxious,2 worker,3 depressive,...)
+
+    // --- Конструктор (инициализация через присвоение в main) ---
+    // (в DSL конструктор опускаем — поля инициализируются явно)
+
+    // -------------------------------
+    // --- Авто-балансирующие функции
+    // -------------------------------
+    // все auto-функции срабатывают при истинности условия в квадратных скобках
+    // в них используем безопасные пороги и печать предупреждений
+
+    // Самоубийство: срабатывает при крайнем упадке MHI и сильном стрессе
+    int suicid[mental_health_index < 5 && stress > 150] {
+        hp = 0;
+        print("ALERT: suicide_or_collapse id:", id, "day:", current_day, "MHI:", mental_health_index, "stress:", stress);
+    }
+
+    // Смерть от истощения
+    int starvation[hunger > 180 || energy < -50] {
+        hp = 0;
+        print("ALERT: death_by_starvation_or_exhaustion id:", id, "hunger:", hunger, "energy:", energy);
+    }
+
+    // Быстрая медицинская помощь при критическом HP
+    int emergency_medical[hp < 20 && money > 50] {
+        // имитация платной помощи (платим деньги — спасаем HP часть)
+        money = money - 50;
+        hp = hp + 30; // временный бустер
+        print("INFO: paid emergency care for id:", id);
+    }
+
+    // Обновление возраста при несовпадении
+    int age_update[(now - date_of_bithday) / 365 != age] {
+        age = (now - date_of_bithday) / 365;
+    }
+
+    // Автозапись истории (каждый день)
+    int record_daily() {
+        mood_history.pushback(mood);
+        stress_history.pushback(stress);
+        money_history.pushback(money);
+    }
+
+    // -------------------------------
+    // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (логика)
+    // -------------------------------
+
+    // Обновление агрегированного mental_health_index (0..100)
+    int recompute_mhi() {
+        // формула: позитивные факторы увеличивают, негативные уменьшают
+        double base;
+        base = 50.0;
+
+        // черты личности влияют на устойчивость
+        base = base + (resilience - neuroticism) * 0.2;
+
+        // текущие состояния
+        base = base + (mood * 0.2);                  // mood -100..100 -> -20..20
+        base = base - (stress / 200.0) * 30.0;       // stress 0..200 -> up to -30
+        base = base + (social_support - loneliness) * 0.1;
+        base = base + (coping_skill * 0.15);
+
+        // clamp 0..100
+        if (base < 0) { base = 0; }
+        if (base > 100) { base = 100; }
+
+        mental_health_index = base;
+    }
+
+    // Получить индекс доверия к другу по индексу в vectors
+    double get_trust_by_index(int idx) {
+        if (idx >= 0 && idx < trust.size()) {
+            return trust[idx];
+        }
+        return 0.0;
+    }
+
+    // Локальная коррекция дружбы (используется после взаимодействия)
+    int adjust_friendship(int fid, double delta) {
+        int i;
+        i = 0;
+        while (i < friends.size()) {
+            if (friends[i] == fid) {
+                friendship_strength[i] = friendship_strength[i] + delta;
+                // clamp 0..100
+                if (friendship_strength[i] < 0) friendship_strength[i] = 0;
+                if (friendship_strength[i] > 100) friendship_strength[i] = 100;
+                return 0;
+            }
+            i = i + 1;
+        }
+        return 0;
+    }
+
+    int social_propagation() {
+        if (friends.size() == 0) return 0;
+        double damp = 0.85;
+        double max_depth = 4;
+        vector<int> q;
+        vector<int> visited;
+        vector<int> depth;
+
+        q.pushback(id);
+        depth.pushback(0);
+        visited.pushback(id);
+
+        int qi;
+        qi = 0;
+        while (qi < q.size()) {
+            int cur;
+            cur = q[qi];
+            int d;
+            d = depth[qi];
+
+            // остановка по глубине
+            if (d >= max_depth) {
+                qi = qi + 1;
+                continue;
+            }
+
+            // проходим по соседям текущего узла (здесь — свои друзья; runtime должен позволять получить объект друга)
+            int i;
+            i = 0;
+            while (i < friends.size()) {
+                int fid;
+                fid = friends[i];
+                double w;
+                w = friendship_strength[i] / 100.0; // 0..1
+
+                // Получаем stress друга и mood (в реальном рантайме вызов к среде)
+                double friend_stress;
+                double friend_mood;
+                friend_stress = get_remote_stress(fid);   // placeholder
+                friend_mood = get_remote_mood(fid);       // placeholder
+
+                // Влияние: среднее между текущим и другом, скорректированное весом и демпфингом
+                double delta_stress;
+                delta_stress = (friend_stress - stress) * w * influenceability * 0.01 * pow(damp, d);
+
+                // обновляем свой стресс (но не мгновенно — добавляем небольшой вклад)
+                stress = stress + delta_stress;
+
+                // позитивное влияние (оптимизм) от эмпатии и дружбы
+                double delta_mood;
+                delta_mood = (friend_mood - mood) * (w * empathy * 0.01) * pow(damp, d);
+                mood = mood + delta_mood;
+
+                // добавляем в очередь, если ещё не посещали
+                if (visited.contains(fid) == 0) {
+                    q.pushback(fid);
+                    depth.pushback(d + 1);
+                    visited.pushback(fid);
+                }
+
+                i = i + 1;
+            }
+
+            qi = qi + 1;
+        }
+
+        // Ограничения после расчётов
+        if (stress < 0) stress = 0;
+        if (stress > 200) stress = 200;
+        if (mood < -100) mood = -100;
+        if (mood > 100) mood = 100;
+
+        return 0;
+    }
+
+    // -------------------------------
+    // --- Быстрые заглушки для доступа к полям других людей
+    // --- В реальном рантайме эти функции должны обращаться к массиву людей
+    // -------------------------------
+    double get_remote_stress[int fid] {
+        // placeholder: возвращает средний стресс (в продакшене — возвращать people[fid].stress)
+        return 50.0;
+    }
+    double get_remote_mood(int fid) {
+        return 0.0;
+    }
+
+    // -------------------------------
+    // --- Экономическое поведение и базовый рабочий цикл
+    // -------------------------------
+    int work_and_economy() {
+        // если мертв — не работает
+        if (hp <= 0) return 0;
+
+        // мотивация к работе зависит от энергии, необходимости денег и личной сознательности
+        double need_money_factor;
+        need_money_factor = max(0.0, (50.0 - money) / 50.0); // 0..1
+
+        double work_drive;
+        work_drive = (motivation * 0.6 + conscientious * 0.4) * (1.0 - (stress / 200.0)) * (1.0 + need_money_factor);
+
+        // доход пропорционален profession и work_drive
+        double earned;
+        earned = income_base * (1.0 + work_drive * 0.01);
+        money = money + earned;
+
+        // усталость от работы
+        energy = energy - (10.0 * (1.0 - conscientious * 0.01));
+        stress = stress + (5.0 * (1.0 - resilience * 0.01));
+
+        // clamp
+        if (energy < -100) energy = -100;
+        if (money < 0) money = money; // деньги могут быть отрицательными — долг
+
+        return 0;
+    }
+
+    int coping_and_recovery() {
+        // отдых и сон
+        if (sleep_debt > 0) {
+            double recover = min(8.0, sleep_debt); // до 8 часов сна/день
+            sleep_debt = sleep_debt - recover;
+            energy = energy + recover * 6.0;
+            mood = mood + recover * 0.5;
+        }
+
+        // использование навыков копинга
+        double coping_effect;
+        coping_effect = coping_skill * 0.05 + resilience * 0.03;
+        stress = stress - coping_effect;
+        mood = mood + coping_effect * 0.2;
+
+        // социальная поддержка уменьшает одиночество и стресс
+        double support_effect;
+        support_effect = social_support * 0.04 + (friendship_strength.size() * 0.5);
+        stress = stress - support_effect * (empathy * 0.01);
+
+        // clamp
+        if (stress < 0) stress = 0;
+        if (mood > 100) mood = 100;
+
+        return 0;
+    }
+
+    int daily_behaviour[current_day != now] {
+        if (hp <= 0) return 0;
+
+        current_day = now;
+
+        hunger = hunger + 6.0;
+        sleep_debt = sleep_debt + (if (energy < 30) { 6.0 } else { 0.0 }); // если устал — накапливаем долг
+        energy = energy - 10.0;
+
+        work_and_economy();
+        social_propagation();
+
+        coping_and_recovery();
+        recompute_mhi();
+
+        record_daily();
+
+        return 0;
+    }
+
+} ; // end class human
+
+
+// -------------------------------
+// --- Пример использования (main)
+// -------------------------------
+int main() {
+    int now;
+    now = 0;
+
+    // создаём небольшую популяцию (пример)
+    human p0;
+    human p1;
+    human p2;
+    human p3;
+
+    // --- Инициализация (примерные значения) ---
+    p0.id = 0; p0.name = "Alice";
+    p0.hp = 100; p0.age = 28; p0.date_of_bithday = 1997 * 365;
+    p0.hunger = 10.0; p0.energy = 80.0; p0.sleep_debt = 0.0;
+    p0.money = 120.0; p0.income_base = 15.0;
+    p0.openness = 60.0; p0.conscientious = 70.0; p0.extraversion = 65.0; p0.agreeableness = 75.0; p0.neuroticism = 30.0;
+    p0.resilience = 70.0; p0.coping_skill = 60.0; p0.empathy = 80.0; p0.influenceability = 30.0; p0.leadership = 40.0;
+    p0.social_support = 60.0; p0.loneliness = 20.0;
+    p0.mood = 10.0; p0.stress = 25.0; p0.anxiety = 20.0; p0.motivation = 70.0; p0.satisfaction = 60.0;
+    p0.income_base = 15.0; p0.profession = 2; p0.type = 2;
+
+    p1.id = 1; p1.name = "Bob";
+    p1.hp = 95; p1.age = 35; p1.date_of_bithday = 1990 * 365;
+    p1.hunger = 20.0; p1.energy = 65.0; p1.sleep_debt = 2.0;
+    p1.money = 40.0; p1.income_base = 10.0;
+    p1.openness = 40.0; p1.conscientious = 50.0; p1.extraversion = 45.0; p1.agreeableness = 50.0; p1.neuroticism = 55.0;
+    p1.resilience = 40.0; p1.coping_skill = 30.0; p1.empathy = 45.0; p1.influenceability = 60.0; p1.leadership = 25.0;
+    p1.social_support = 30.0; p1.loneliness = 50.0;
+    p1.mood = -5.0; p1.stress = 65.0; p1.anxiety = 60.0; p1.motivation = 40.0; p1.satisfaction = 30.0;
+    p1.income_base = 10.0; p1.profession = 1; p1.type = 1;
+
+    p2.id = 2; p2.name = "Carol";
+    p2.hp = 90; p2.age = 23; p2.date_of_bithday = 2001 * 365;
+    p2.hunger = 5.0; p2.energy = 85.0; p2.sleep_debt = 0.0;
+    p2.money = 60.0; p2.income_base = 12.0;
+    p2.openness = 75.0; p2.conscientious = 55.0; p2.extraversion = 80.0; p2.agreeableness = 68.0; p2.neuroticism = 25.0;
+    p2.resilience = 65.0; p2.coping_skill = 55.0; p2.empathy = 70.0; p2.influenceability = 35.0; p2.leadership = 55.0;
+    p2.social_support = 75.0; p2.loneliness = 10.0;
+    p2.mood = 25.0; p2.stress = 30.0; p2.anxiety = 15.0; p2.motivation = 80.0; p2.satisfaction = 70.0;
+    p2.income_base = 12.0; p2.profession = 3; p2.type = 0;
+
+    p3.id = 3; p3.name = "Dave";
+    p3.hp = 80; p3.age = 45; p3.date_of_bithday = 1980 * 365;
+    p3.hunger = 30.0; p3.energy = 55.0; p3.sleep_debt = 4.0;
+    p3.money = 200.0; p3.income_base = 25.0;
+    p3.openness = 30.0; p3.conscientious = 85.0; p3.extraversion = 30.0; p3.agreeableness = 40.0; p3.neuroticism = 20.0;
+    p3.resilience = 80.0; p3.coping_skill = 75.0; p3.empathy = 30.0; p3.influenceability = 20.0; p3.leadership = 80.0;
+    p3.social_support = 50.0; p3.loneliness = 30.0;
+    p3.mood = 5.0; p3.stress = 20.0; p3.anxiety = 10.0; p3.motivation = 50.0; p3.satisfaction = 50.0;
+    p3.income_base = 25.0; p3.profession = 4; p3.type = 2;
+
+    // --- Социальные связи (векторные) ---
+    // p0 (Alice) — друзья p1 (Bob) сильнее, p2 (Carol) очень сильная дружба
+    p0.friends.pushback(1); p0.friendship_strength.pushback(60.0); p0.trust.pushback(55.0); p0.relation_tag.pushback("colleague");
+    p0.friends.pushback(2); p0.friendship_strength.pushback(85.0); p0.trust.pushback(80.0); p0.relation_tag.pushback("friend");
+
+    // p1 (Bob)
+    p1.friends.pushback(0); p1.friendship_strength.pushback(60.0); p1.trust.pushback(50.0); p1.relation_tag.pushback("colleague");
+    p1.friends.pushback(3); p1.friendship_strength.pushback(30.0); p1.trust.pushback(30.0); p1.relation_tag.pushback("neighbor");
+
+    // p2 (Carol)
+    p2.friends.pushback(0); p2.friendship_strength.pushback(85.0); p2.trust.pushback(85.0); p2.relation_tag.pushback("friend");
+    p2.friends.pushback(3); p2.friendship_strength.pushback(40.0); p2.trust.pushback(35.0); p2.relation_tag.pushback("colleague");
+
+    // p3 (Dave)
+    p3.friends.pushback(1); p3.friendship_strength.pushback(30.0); p3.trust.pushback(30.0); p3.relation_tag.pushback("neighbor");
+    p3.friends.pushback(2); p3.friendship_strength.pushback(40.0); p3.trust.pushback(35.0); p3.relation_tag.pushback("colleague");
+
+    // --- Симуляция на N дней ---
+    int day;
+    day = 0;
+    while (day < 120) {
+        now = now + 1;
+
+        // каждый человек выполняет свои ежедневные шаги
+        p0.daily_behaviour[1];
+        p1.daily_behaviour[1];
+        p2.daily_behaviour[1];
+        p3.daily_behaviour[1];
+
+        if (day % 7 == 0) {
+            print("DAY", day);
+            print(" p0:", p0.name, "hp:", p0.hp, "MHI:", p0.mental_health_index, "stress:", p0.stress, "mood:", p0.mood, "money:", p0.money);
+            print(" p1:", p1.name, "hp:", p1.hp, "MHI:", p1.mental_health_index, "stress:", p1.stress, "mood:", p1.mood, "money:", p1.money);
+            print(" p2:", p2.name, "hp:", p2.hp, "MHI:", p2.mental_health_index, "stress:", p2.stress, "mood:", p2.mood, "money:", p2.money);
+            print(" p3:", p3.name, "hp:", p3.hp, "MHI:", p3.mental_health_index, "stress:", p3.stress, "mood:", p3.mood, "money:", p3.money);
+        }
+
+        day = day + 1;
+    }
+
+    return 0;
+}
