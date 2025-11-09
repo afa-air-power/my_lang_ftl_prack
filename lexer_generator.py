@@ -52,6 +52,7 @@ def generate_lexer():
             {"(", parser::TokenType::TOK_LPAREN},
             {")", parser::TokenType::TOK_RPAREN},
             {"[", parser::TokenType::TOK_LBRACKET},
+            {".", parser::TokenType::TOK_DOT},
             {"]", parser::TokenType::TOK_RBRACKET},
             {"{", parser::TokenType::TOK_LBRACE},
             {"}", parser::TokenType::TOK_RBRACE},

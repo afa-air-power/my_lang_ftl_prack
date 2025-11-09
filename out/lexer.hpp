@@ -32,6 +32,7 @@ inline parser::TokenType symbol_to_token_type(const std::string& sym) {
         {"(", parser::TokenType::TOK_LPAREN},
         {")", parser::TokenType::TOK_RPAREN},
         {"[", parser::TokenType::TOK_LBRACKET},
+        {".", parser::TokenType::TOK_DOT},
         {"]", parser::TokenType::TOK_RBRACKET},
         {"{", parser::TokenType::TOK_LBRACE},
         {"}", parser::TokenType::TOK_RBRACE},
