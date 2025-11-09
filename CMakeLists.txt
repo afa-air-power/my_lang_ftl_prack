@@ -11,7 +11,6 @@ FetchContent_Declare(
         googletest
         URL https://github.com/google/googletest/archive/refs/heads/main.zip
 )
-# Optional: avoid timestamp warning by setting the option (newer CMake)
 set(FETCHCONTENT_QUIET OFF)
 FetchContent_MakeAvailable(googletest)
 
@@ -20,8 +19,6 @@ enable_testing()
 # ============================================================
 # ⚙️  Генерация парсера и лексера при каждой сборке
 # ============================================================
-# Псевдо-цель, которая всегда выполняется (ALL) — запускает генераторы
-# Определяем путь к Python в venv
 if (WIN32)
     set(VENV_PYTHON "${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe")
 else()
@@ -44,32 +41,39 @@ add_custom_target(regen
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
-
-# (Опционально) Скопировать test_program.txt в binary dir, чтобы исполняемый находил его
-file(COPY ${CMAKE_SOURCE_DIR}/test_program.txt DESTINATION ${CMAKE_BINARY_DIR})
+# ============================================================
+# 📄 Принудительное копирование test_program.txt
+# ============================================================
+add_custom_target(copy_test_program ALL
+        COMMAND ${CMAKE_COMMAND} -E echo "📄 Копирование test_program.txt в директорию сборки..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/test_program.txt
+        ${CMAKE_BINARY_DIR}/test_program.txt
+        COMMENT "Копирование тестового файла при каждой сборке"
+        VERBATIM
+)
 
 # ============================================================
 #  Основной исполняемый файл
 # ============================================================
 add_executable(my_lang_ftl_prak
         main.cpp
-        out/parser.cpp    # generated file; generate_parser_lexer target will create it before build
+        out/parser.cpp
 )
 
-# ensure the generation target runs before building the executable
-add_dependencies(my_lang_ftl_prak generate_parser_lexer)
+add_dependencies(my_lang_ftl_prak generate_parser_lexer copy_test_program)
 
 target_include_directories(my_lang_ftl_prak PRIVATE
         ${CMAKE_SOURCE_DIR}/out
 )
 
 # ============================================================
-#  Тесты (отдельный таргет)
+#  Тесты
 # ============================================================
 add_executable(my_lang_tests
         autotest/grammar_test.cpp
         autotest/parser_test.cpp
-        out/parser.cpp     # reuse generated parser implementation (ok for testing)
+        out/parser.cpp
 )
 
 target_include_directories(my_lang_tests PRIVATE
@@ -78,12 +82,7 @@ target_include_directories(my_lang_tests PRIVATE
 
 target_link_libraries(my_lang_tests PRIVATE gtest_main)
 
-# make sure tests also depend on generation
-add_dependencies(my_lang_tests generate_parser_lexer)
+add_dependencies(my_lang_tests generate_parser_lexer copy_test_program)
 
 include(GoogleTest)
 gtest_discover_tests(my_lang_tests)
-
-# ============================================================
-#  Удобный таргет для форсированного регенерирования (опционально)
-# ============================================================

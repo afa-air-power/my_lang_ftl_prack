@@ -273,6 +273,7 @@ class CppRecursiveDescentGen:
             "};",
             "",
             "extern TokenType current;",
+            "extern lexer::Token current_token;",
             "void gc();",
             "void parse(lexer::Lexer& lexer, const std::string& path);",
             ""
@@ -296,97 +297,82 @@ class CppRecursiveDescentGen:
             namespace parser {
             static lexer::Lexer* current_lexer = nullptr;
             TokenType current = TokenType::END_OF_FILE;
+            lexer::Token current_token(TokenType::END_OF_FILE, "", "", 0, 0);
+            static std::string current_file_path;
 
             static std::vector<std::string> call_stack;
-
-            static void debug_token(const std::string& where) {
-                std::cout << "🔎 [" << where << "] current token: "
-                          << token_to_string(current) << std::endl;
-            }
 
             void gc() {
                 if (!current_lexer)
                     throw std::runtime_error("Lexer not initialized");
-                current = current_lexer->next().type;
-                std::cout << "➡️ gc(): now current = " << token_to_string(current) << std::endl;
+                current_token = current_lexer->next();
+                current = current_token.type;
             }
 
-           void parse(lexer::Lexer& lexer, const std::string& path) {
-    current_lexer = &lexer;
-    gc();
-    
-    std::cout << "📘 Parsing file: " << path << std::endl;
-    try {
-        std::ofstream out("lexer_info.txt");
-        if (out.is_open()) {
-            out << "LEXER DUMP (on parse error)\\n";
-            out << "=============================\\n";
-            try {
-                auto tokens = current_lexer->get_all_tokens();
-                for (const auto& t : tokens) {
-                    out << "Type: " << token_to_string(t.type)
-                        << ", Name: " << t.name
-                        << ", Value: " << t.value
-                        << ", Line: " << t.line
-                        << ", Col: " << t.col << "\\n";
-                }
-            } catch (const std::exception& le) {
-                out << "[Lexer dump failed: " << le.what() << "]\\n";
-            }
-            out.close();
-            std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
-        }
-        TOK_PROGRAM();
-        std::cout << "\\n✅ Parsing completed successfully.\\n";
-    } catch (const ParseError& e) {
-        std::cerr << "\\n❌ Parse failed: " << e.what() << std::endl;
-        std::cerr << "Call stack (on error):\\n";
-        for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
-            std::cerr << "  • " << *it << std::endl;
+            void parse(lexer::Lexer& lexer, const std::string& path) {
+                current_lexer = &lexer;
+                current_file_path = path;
+                gc();
+                
+                std::cout << "Parsing file: " << path << std::endl;
+                try {
+                    TOK_PROGRAM();
+                    std::cout << "\\nParsing completed successfully.\\n";
+                } catch (const ParseError& e) {
+                    std::cerr << "\\n" << current_file_path << ":" << current_token.line 
+                              << ":" << current_token.col << ": error: ";
+                    std::cerr << "unexpected token " << token_to_string(current) 
+                              << " ('" << current_token.value << "')\\n";
+                    std::cerr << e.what() << std::endl;
 
-        std::ofstream out("lexer_info.txt");
-        if (out.is_open()) {
-            out << "LEXER DUMP (on parse error)\\n";
-            out << "=============================\\n";
-            try {
-                auto tokens = current_lexer->get_all_tokens();
-                for (const auto& t : tokens) {
-                    out << "Type: " << token_to_string(t.type)
-                        << ", Name: " << t.name
-                        << ", Value: " << t.value
-                        << ", Line: " << t.line
-                        << ", Col: " << t.col << "\\n";
+                    std::ofstream out("lexer_info.txt");
+                    if (out.is_open()) {
+                        out << "LEXER DUMP (on parse error)\\n";
+                        out << "=============================\\n";
+                        out << "Error at " << current_file_path << ":" << current_token.line << ":" << current_token.col << "\\n";
+                        out << "Current token: " << token_to_string(current) << " = '" << current_token.value << "'\\n\\n";
+                        try {
+                            auto tokens = current_lexer->get_all_tokens();
+                            for (const auto& t : tokens) {
+                                out << "Type: " << token_to_string(t.type)
+                                    << ", Name: " << t.name
+                                    << ", Value: " << t.value
+                                    << ", Line: " << t.line
+                                    << ", Col: " << t.col << "\\n";
+                            }
+                        } catch (const std::exception& le) {
+                            out << "[Lexer dump failed: " << le.what() << "]\\n";
+                        }
+                        out.close();
+                        std::cerr << "Lexer dump written to lexer_info.txt\\n";
+                    }
                 }
-            } catch (const std::exception& le) {
-                out << "[Lexer dump failed: " << le.what() << "]\\n";
             }
-            out.close();
-            std::cerr << "📝 Lexer dump written to lexer_info.txt\\n";
-        }
-    }
-}
-            
 
             struct CallContext {
-                std::string name;
-                CallContext(const std::string& n) : name(n) {
-                    std::string information_=token_to_string(current);
-                    call_stack.push_back(n );
-                    std::cout << "\\n➡️ Enter <" << n << ">" << std::endl;
-                    debug_token(n);
+                std::string func_name;
+                CallContext(const std::string& n) : func_name(n) {
+                    std::string info = current_file_path + ":" + 
+                                       std::to_string(current_token.line) + ":" + 
+                                       std::to_string(current_token.col) + ": " +
+                                       "in " + n + 
+                                       " [token: " + token_to_string(current) + 
+                                       " = '" + current_token.value + "']";
+                    call_stack.push_back(info);
                 }
                 ~CallContext() {
-                    std::cout << "⬅️ Leave <" << name << ">\\n";
-                    call_stack.pop_back();
+                    if (!call_stack.empty())
+                        call_stack.pop_back();
                 }
             };
 
             static void syntax_error(const std::string& msg) {
-                std::cerr << "\\n❌ Syntax error: " << msg << "\\n";
-                std::cerr << "Call stack:" << std::endl;
-                for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it)
-                    std::cerr << "  in <" << *it << ">" << std::endl;
-                throw ParseError(msg);
+                // Сохраняем стек перед исключением
+                std::string stack_info = msg + "\\n\\nCall stack:\\n";
+                for (auto it = call_stack.rbegin(); it != call_stack.rend(); ++it) {
+                    stack_info += "  " + *it + "\\n";
+                }
+                throw ParseError(stack_info);
             }
         """)
 

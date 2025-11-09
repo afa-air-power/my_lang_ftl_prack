@@ -31,6 +31,8 @@ inline parser::TokenType symbol_to_token_type(const std::string& sym) {
     static const std::unordered_map<std::string, parser::TokenType> symbol_map = {
         {"(", parser::TokenType::TOK_LPAREN},
         {")", parser::TokenType::TOK_RPAREN},
+        {"[", parser::TokenType::TOK_LBRACKET},
+        {"]", parser::TokenType::TOK_RBRACKET},
         {"{", parser::TokenType::TOK_LBRACE},
         {"}", parser::TokenType::TOK_RBRACE},
         {";", parser::TokenType::TOK_SEMICOLON},
@@ -40,6 +42,7 @@ inline parser::TokenType symbol_to_token_type(const std::string& sym) {
         {"*", parser::TokenType::TOK_STAR},
         {"=", parser::TokenType::TOK_EQUAL},
         {"<", parser::TokenType::TOK_LT},
+        {">", parser::TokenType::TOK_GT},
         {"!", parser::TokenType::TOK_EXCL},
         {"==", parser::TokenType::TOK_EQEQ},
         {"&&", parser::TokenType::TOK_ANDAND},
@@ -132,12 +135,9 @@ public:
 
     void debug_print() const {
     if(0){
-        std::cout << "🧭 Keyword trie built (" << trie.size() << " nodes):\\n";
         for (size_t i = 0; i < trie.size(); ++i) {
             const auto& n = trie[i];
             if (n.is_terminal) {
-                std::cout << "   • [" << n.word << "] → "
-                          << static_cast<int>(n.token_type) << std::endl;
             }
         }
     }}
@@ -210,13 +210,14 @@ private:
         std::string kw;
         while (std::getline(in, kw)) {
             if (!kw.empty()) {
-                std::cout << "📘 Loading keyword: [" << kw << "]" << std::endl;
                 parser::TokenType t = parser::TokenType::IDENTIFIER;
                 if (kw == "int") t = parser::TokenType::TOK_INT;
                 else if (kw == "float") t = parser::TokenType::TOK_FLOAT;
                 else if (kw == "double") t = parser::TokenType::TOK_DOUBLE;
                 else if (kw == "if") t = parser::TokenType::TOK_IF;
                 else if (kw == "else") t = parser::TokenType::TOK_ELSE;
+                else if (kw == "string") t = parser::TokenType::TOK_STRING;
+                else if (kw == "vector") t = parser::TokenType::TOK_VECTOR;
                 else if (kw == "while") t = parser::TokenType::TOK_WHILE;
                 else if (kw == "return") t = parser::TokenType::TOK_RETURN;
                 else if (kw == "class") t = parser::TokenType::TOK_CLASS;
@@ -265,12 +266,11 @@ private:
         std::string word = source.substr(start, pos - start);
         parser::TokenType t = parser::TokenType::IDENTIFIER;
         if (automaton.match_exact(word, t)) {
-            std::cout << "🔹 Matched keyword: [" << word << "] → "
-                      << static_cast<int>(t) << std::endl;
+
             return Token(t, word, word, line, start_col);
         }
 
-        std::cout << "🟡 Identifier: [" << word << "]" << std::endl;
+
         return Token(parser::TokenType::IDENTIFIER, word, word, line, start_col);
     }
 
@@ -284,7 +284,6 @@ private:
         }
 
         std::string val = source.substr(start, pos - start);
-        std::cout << "🔢 Number: [" << val << "]" << std::endl;
         return Token(parser::TokenType::NUMBER, val, val, line, start_col);
     }
 
@@ -297,7 +296,6 @@ private:
             val += get_char();
         }
         get_char();
-        std::cout << "💬 String: [" << val << "]" << std::endl;
         return Token(parser::TokenType::STRING, val, val, line, start_col);
     }
 
@@ -320,8 +318,6 @@ private:
         // Определяем правильный тип токена
         parser::TokenType type = symbol_to_token_type(sym);
 
-        std::cout << "⚙️ Symbol: [" << sym << "] → " 
-                  << parser::token_to_string(type) << std::endl;
         return Token(type, sym, sym, line, start_col);
     }
 };
