@@ -1,5 +1,5 @@
 class human {
-    int id ;
+    int id;
     string name;
     int hp;                // 0..100  — здоровье/жизненность
     int age;               // годы
@@ -68,18 +68,22 @@ int main() {
     int now;
     now = 0;
 
-    // создаём небольшую популяцию (пример)
-    human p0;
-    human p1;
-    human p2;
-    human p3;
+
 
     // --- Инициализация (примерные значения) ---
-    p0.id = 0; p0.name = "Alice";
-    p0.hp = 100; p0.age = 28; p0.date_of_bithday = 1997 * 365;
-    p0.hunger = 10.0; p0.energy = 80.0; p0.sleep_debt = 0.0;
-    p0.money = 120.0; p0.income_base = 15.0;
-    p0.openness = 60.0; p0.conscientious = 70.0; p0.extraversion = 65.0; p0.agreeableness = 75.0; p0.neuroticism = 30.0;
+    p0.id = 0;
+    p0.name = "Alice";
+    p0.hp = 100;
+    p0.age = 28;
+    p0.date_of_bithday = 1997 * 365;
+    p0.hunger = 10.0;
+    p0.energy = 80.0;
+    p0.sleep_debt = 0.0;
+    p0.money = 120.0;
+    p0.income_base = 15.0;
+    p0.openness = 60.0;
+    p0.conscientious = 70.0;
+    p0.extraversion = 65.0; p0.agreeableness = 75.0; p0.neuroticism = 30.0;
     p0.resilience = 70.0; p0.coping_skill = 60.0; p0.empathy = 80.0; p0.influenceability = 30.0; p0.leadership = 40.0;
     p0.social_support = 60.0; p0.loneliness = 20.0;
     p0.mood = 10.0; p0.stress = 25.0; p0.anxiety = 20.0; p0.motivation = 70.0; p0.satisfaction = 60.0;
@@ -144,7 +148,7 @@ int main() {
         p2.daily_behaviour[1];
         p3.daily_behaviour[1];
 
-        if (day % 7 == 0) {
+        {
             print("DAY", day);
             print(" p0:", p0.name, "hp:", p0.hp, "MHI:", p0.mental_health_index, "stress:", p0.stress, "mood:", p0.mood, "money:", p0.money);
             print(" p1:", p1.name, "hp:", p1.hp, "MHI:", p1.mental_health_index, "stress:", p1.stress, "mood:", p1.mood, "money:", p1.money);
