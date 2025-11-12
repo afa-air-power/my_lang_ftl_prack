@@ -12,7 +12,7 @@ class human {
     double sleep_debt;     // часы накопленного недосыпа, может быть дробным
 
     // --- Экономика ---
-    double money;          // валютный баланс (может быть дробным)
+    double money; // валютный баланс (может быть дробным)
     double income_base;    // базовый доход в день
 
     // --- Психологические численные характеристики (scale 0..100, double) ---
@@ -60,15 +60,20 @@ class human {
 
 } ; // end class human
 
+int IHYFIR87RI7U;
+
 
 // -------------------------------
 // --- Пример использования (main)
 // -------------------------------
+
+jkg
 int main() {
     int now;
     now = 0;
 
-
+    i k = main;
+    k = ((a)+b);
 
     // --- Инициализация (примерные значения) ---
     p0.id = 0;
@@ -86,7 +91,9 @@ int main() {
     p0.extraversion = 65.0; p0.agreeableness = 75.0; p0.neuroticism = 30.0;
     p0.resilience = 70.0; p0.coping_skill = 60.0; p0.empathy = 80.0; p0.influenceability = 30.0; p0.leadership = 40.0;
     p0.social_support = 60.0; p0.loneliness = 20.0;
-    p0.mood = 10.0; p0.stress = 25.0; p0.anxiety = 20.0; p0.motivation = 70.0; p0.satisfaction = 60.0;
+    p0.mood = 10.0; p0.stress = 25.0; p0.anxiety = 20.0;
+
+    p0.motivation = 70.0; p0.satisfaction = 60.0;
     p0.income_base = 15.0; p0.profession = 2; p0.type = 2;
 
     p1.id = 1; p1.name = "Bob";
@@ -141,12 +148,11 @@ int main() {
     day = 0;
     while (day < 120) {
         now = now + 1;
-
         // каждый человек выполняет свои ежедневные шаги
-        p0.daily_behaviour[1];
-        p1.daily_behaviour[1];
-        p2.daily_behaviour[1];
-        p3.daily_behaviour[1];
+        p0;
+        p1;
+        p2;
+        p3;
 
         {
             print("DAY", day);

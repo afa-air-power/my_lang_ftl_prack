@@ -220,6 +220,7 @@ private:
                 else if (kw == "string") t = parser::TokenType::TOK_STRING;
                 else if (kw == "vector") t = parser::TokenType::TOK_VECTOR;
                 else if (kw == "while") t = parser::TokenType::TOK_WHILE;
+                else if (kw == "for") t = parser::TokenType::TOK_FOR;
                 else if (kw == "return") t = parser::TokenType::TOK_RETURN;
                 else if (kw == "class") t = parser::TokenType::TOK_CLASS;
                 automaton.insert(kw, t);

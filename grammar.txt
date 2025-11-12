@@ -15,9 +15,10 @@
 <Param> -> <Type> <id>
 <CompoundStmt> -> "{" <StmtList> "}"
 <StmtList> -> <Statement> <StmtList> | ε
-<Statement> -> <IfStmt> | <WhileStmt> | <ReturnStmt> | <ExpressionStmt> | <CompoundStmt> | <LocalVarDecl>
+<Statement> -> <IfStmt> | <WhileStmt> | <ReturnStmt> | <ExpressionStmt> | <CompoundStmt> | <LocalVarDecl> | <ForStmt>
+<ForStmt> -> "for" "(" <Expression> ")" <Statement>
 <LocalVarDecl> -> <Type> <id> <VarDeclRest> ";"
-<IfStmt> -> "if" "(" <Expression> ")" <Statement> <ElsePart> | "if" "(" <Expression> ")" <Statement>
+<IfStmt> -> "if" "(" <Expression>; <Expression>; <Expression> ")" <Statement> <ElsePart> | "if" "(" <Expression> ")" <Statement>
 <ElsePart> -> "else" <Statement> | ε
 <WhileStmt> -> "while" "(" <Expression> ")" <Statement>
 <ReturnStmt> -> "return" <Expression> ";"
