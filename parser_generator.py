@@ -8,7 +8,11 @@
   - out/keywords.hpp
   - out/ast.hpp
   - out/ast.cpp
+  - out/ast_utils.hpp       <- НОВОЕ: утилиты печати/семантики/оптимизаций
+  - out/ast_utils.cpp       <- НОВОЕ: реализация утилит
   - out/system_reserved_identifiers.txt
+Примечание: функционал генерации, интерфейсы и существующие файлы оставлены без изменения.
+Новый код добавляет дополнительные вспомогательные файлы и вставляет вызовы в сгенерированный parser.cpp.
 """
 
 import re
@@ -183,9 +187,12 @@ class CppRecursiveDescentGen:
         self._write_keywords_hpp()
         self._write_ast_hpp()
         self._write_ast_cpp()
+        # --- Новое: сгенерировать утилиты AST перед генерацией parser.cpp
+        self._write_ast_utils_hpp()
+        self._write_ast_utils_cpp()
         self._write_parser_hpp()
         self._write_parser_cpp()
-        print("Генерация завершена: parser.cpp/hpp, ast.cpp/hpp и keywords.hpp созданы.")
+        print("Генерация завершена: parser.cpp/hpp, ast.cpp/hpp, keywords.hpp и ast_utils созданы.")
 
     def _write_reserved_list(self):
         with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:
@@ -475,6 +482,184 @@ class CppRecursiveDescentGen:
         with open("out/ast.cpp", "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
+    # ================================================================
+    # НОВОЕ: генерация ast_utils.hpp
+    # ================================================================
+    def _write_ast_utils_hpp(self):
+        lines = [
+            "#pragma once",
+            "#include \"ast.hpp\"",
+            "#include \"keywords.hpp\"",
+            "#include <string>",
+            "",
+            "namespace ast {",
+            "",
+            "// Печать дерева в файл",
+            "void print_tree_to_file(AstNode* root, const std::string& path);",
+            "",
+            "// Простая семантическая проверка (best-effort). Возвращает true если нет ошибок.",
+            "bool semantic_check(AstNode* root);",
+            "",
+            "// Простая оптимизация/предпосчёт (constant folding и простые локальные замены)",
+            "void optimize_ast(AstNode* root);",
+            "",
+            "} // namespace ast",
+        ]
+        with open("out/ast_utils.hpp", "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+    # ================================================================
+    # НОВОЕ: генерация ast_utils.cpp
+    # ================================================================
+    def _write_ast_utils_cpp(self):
+        lines = [
+            "#include \"ast_utils.hpp\"",
+            "#include <fstream>",
+            "#include <iostream>",
+            "#include <sstream>",
+            "#include <unordered_set>",
+            "#include <vector>",
+            "",
+            "namespace ast {",
+            "",
+            "// ----------------- Печать -----------------",
+            "static void print_node_to_stream(const AstNode* node, std::ostream& out, int depth) {",
+            "    if (!node) return;",
+            "    out << std::string(depth * 2, ' ') << node->to_string() << \"\\n\";",
+            "    for (const auto* c : node->children) {",
+            "        print_node_to_stream(c, out, depth + 1);",
+            "    }",
+            "}",
+            "",
+            "void print_tree_to_file(AstNode* root, const std::string& path) {",
+            "    std::ofstream out(path);",
+            "    if (!out.is_open()) {",
+            "        std::cerr << \"Could not open \" << path << \" for AST dump\\n\";",
+            "        return;",
+            "    }",
+            "    print_node_to_stream(root, out, 0);",
+            "    out.close();",
+            "}",
+            "",
+            "// ----------------- Простая семаника -----------------",
+            "struct SemanticState {",
+            "    std::vector<std::unordered_set<std::string>> scopes;",
+            "    std::vector<std::string> messages;",
+            "    void push_scope() { scopes.emplace_back(); }",
+            "    void pop_scope() { if (!scopes.empty()) scopes.pop_back(); }",
+            "    void declare(const std::string& name) { if (scopes.empty()) push_scope(); scopes.back().insert(name); }",
+            "    bool is_declared(const std::string& name) const {",
+            "        for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) if (it->count(name)) return true;",
+            "        return false;",
+            "    }",
+            "    void warn(const std::string& s) { messages.push_back(s); }",
+            "};",
+            "",
+            "static std::string find_first_identifier_in_subtree(AstNode* node) {",
+            "    if (!node) return {};",
+            "    // ищем терминальный узел с типом IDENTIFIER",
+            "    for (auto* c : node->children) {",
+            "        auto* tn = dynamic_cast<TerminalNode*>(c);",
+            "        if (tn) {",
+            "            if (tn->token_type == parser::TokenType::IDENTIFIER) return tn->value;",
+            "        }",
+            "        auto r = find_first_identifier_in_subtree(c);",
+            "        if (!r.empty()) return r;",
+            "    }",
+            "    return {};",
+            "}",
+            "",
+            "static void collect_decls_and_check(AstNode* node, SemanticState& st) {",
+            "    if (!node) return;",
+            "    std::string nodename = node->to_string();",
+            "    // если имя узла содержит DECL/PARAM/CLASS/FUNCTION/VAR - считаем это объявлением (best-effort)",
+            "    if (nodename.find(\"DECL\") != std::string::npos || nodename.find(\"PARAM\") != std::string::npos ||",
+            "        nodename.find(\"CLASS\") != std::string::npos || nodename.find(\"FUNC\") != std::string::npos ||",
+            "        nodename.find(\"VAR\") != std::string::npos) {",
+            "        auto id = find_first_identifier_in_subtree(node);",
+            "        if (!id.empty()) st.declare(id);",
+            "    }",
+            "",
+            "    // проверяем терминалы-идентификаторы на использование",
+            "    for (auto* c : node->children) {",
+            "        auto* tn = dynamic_cast<TerminalNode*>(c);",
+            "        if (tn && tn->token_type == parser::TokenType::IDENTIFIER) {",
+            "            if (!st.is_declared(tn->value)) {",
+            "                std::ostringstream ss;",
+            "                ss << \"semantic warning: identifier '\" << tn->value << \"' might be used before declaration\";",
+            "                st.warn(ss.str());",
+            "            }",
+            "        }",
+            "        collect_decls_and_check(c, st);",
+            "    }",
+            "}",
+            "",
+            "bool semantic_check(AstNode* root) {",
+            "    SemanticState st; st.push_scope();",
+            "    collect_decls_and_check(root, st);",
+            "    if (!st.messages.empty()) {",
+            "        for (auto& m : st.messages) std::cerr << m << \"\\n\";",
+            "        return false;",
+            "    }",
+            "    return true;",
+            "}",
+            "",
+            "// ----------------- Простейшие оптимизации (constant folding) -----------------",
+            "static bool is_number_terminal(AstNode* n, double &outval) {",
+            "    if (!n) return false;",
+            "    auto* t = dynamic_cast<TerminalNode*>(n);",
+            "    if (!t) return false;",
+            "    if (t->token_type != parser::TokenType::NUMBER) return false;",
+            "    try { outval = std::stod(t->value); } catch(...) { return false; }",
+            "    return true;",
+            "}",
+            "",
+            "static bool try_fold_in_children(std::vector<AstNode*>& ch) {",
+            "    // ищем паттерн: NUMBER OP NUMBER подряд и заменяем на один NUMBER",
+            "    for (size_t i = 0; i + 2 < ch.size(); ++i) {",
+            "        double a=0,b=0;",
+            "        if (!is_number_terminal(ch[i], a)) continue;",
+            "        auto* op = dynamic_cast<TerminalNode*>(ch[i+1]);",
+            "        if (!op) continue;",
+            "        if (!is_number_terminal(ch[i+2], b)) continue;",
+            "        // определи оператор: берем name или лексему",
+            "        std::string opname = op->name.empty() ? parser::token_to_string(op->token_type) : op->name;",
+            "        double res = 0; bool ok = true;",
+            "        if (opname == \"+\" || opname == \"PLUS\") res = a + b;",
+            "        else if (opname == \"-\" || opname == \"MINUS\") res = a - b;",
+            "        else if (opname == \"*\" || opname == \"STAR\") res = a * b;",
+            "        else if (opname == \"/\" || opname == \"SLASH\") { if (b==0) ok=false; else res = a / b; }",
+            "        else ok = false;",
+            "        if (!ok) continue;",
+            "        // заменить три узла на один терминальный NUMBER",
+            "        for (int k = 0; k < 3; ++k) { delete ch[i+k]; }",
+            "        ch[i] = new TerminalNode(parser::TokenType::NUMBER, std::to_string(res), \"NUMBER\");",
+            "        ch.erase(ch.begin() + i + 1, ch.begin() + i + 3);",
+            "        return true; // один ход за раз (повторим в цикле)",
+            "    }",
+            "    return false;",
+            "}",
+            "",
+            "static void optimize_node(AstNode* node) {",
+            "    if (!node) return;",
+            "    for (auto* c : node->children) optimize_node(c);",
+            "    // пробегаем по children и пытаемся сворачивать",
+            "    bool changed = true;",
+            "    while (changed) {",
+            "        changed = try_fold_in_children(node->children);",
+            "    }",
+            "}",
+            "",
+            "void optimize_ast(AstNode* root) {",
+            "    // несколько проходов для более глубокого свёртывания",
+            "    for (int i = 0; i < 3; ++i) optimize_node(root);",
+            "}",
+            "",
+            "} // namespace ast",
+        ]
+        with open("out/ast_utils.cpp", "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
     def _write_parser_hpp(self):
         lines = [
             "#pragma once",
@@ -507,11 +692,13 @@ class CppRecursiveDescentGen:
             f.write("\n".join(lines))
 
     def _write_parser_cpp(self):
+        # Изменение: добавляем include ast_utils.hpp
         header = dedent("""\
             #include "parser.hpp"
             #include <iostream>
             #include <vector>
             #include <fstream>
+            #include "ast_utils.hpp"
 
             namespace parser {
             static lexer::Lexer* current_lexer = nullptr;
@@ -538,6 +725,29 @@ class CppRecursiveDescentGen:
                 try {
                     root = TOK_PROGRAM();
                     std::cout << "\\nParsing completed successfully.\\n";
+                    // --- ВСТАВКА: запустить семантику/оптимизации/дамп AST ---
+                    try {
+                        std::cerr << "Running semantic checks...\\n";
+                        bool ok_sem = ast::semantic_check(root);
+                        if (!ok_sem) {
+                            std::cerr << "Semantic checks reported issues (see stderr). Continuing to dump AST.\\n";
+                        }
+                    } catch (const std::exception &e) {
+                        std::cerr << "Semantic check threw: " << e.what() << "\\n";
+                    }
+                    try {
+                        std::cerr << "Running basic AST optimizations (constant folding)...\\n";
+                        ast::optimize_ast(root);
+                    } catch (const std::exception &e) {
+                        std::cerr << "AST optimization threw: " << e.what() << "\\n";
+                    }
+                    try {
+                        ast::print_tree_to_file(root, \"ast.txt\");
+                        std::cerr << \"AST written to ast.txt\\n\";
+                    } catch (const std::exception &e) {
+                        std::cerr << \"AST dump threw: \" << e.what() << \"\\n\";
+                    }
+                    // --- КОНЕЦ ВСТАВКИ ---
                     return root;
                 } catch (const ParseError& e) {
                     std::cerr << "\\n" << current_file_path << ":" << current_token.line 
@@ -569,7 +779,10 @@ class CppRecursiveDescentGen:
                     }
                     
                     if (root) {
+                    
+                root->print(1);
                         ast::delete_tree(root);
+                        
                     }
                     throw;
                 }
