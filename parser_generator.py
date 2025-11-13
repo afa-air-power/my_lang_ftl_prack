@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Процедурный генератор рекурсивного спуска по формальной грамматике.
+Процедурный генератор рекурсивного спуска по формальной грамматике с поддержкой AST.
 Создаёт:
   - out/parser.hpp
   - out/parser.cpp
   - out/keywords.hpp
+  - out/ast.hpp
+  - out/ast.cpp
   - out/system_reserved_identifiers.txt
 """
 
@@ -179,9 +181,11 @@ class CppRecursiveDescentGen:
         os.makedirs("out", exist_ok=True)
         self._write_reserved_list()
         self._write_keywords_hpp()
+        self._write_ast_hpp()
+        self._write_ast_cpp()
         self._write_parser_hpp()
         self._write_parser_cpp()
-        print("Генерация завершена: parser.cpp/hpp и keywords.hpp созданы.")
+        print("Генерация завершена: parser.cpp/hpp, ast.cpp/hpp и keywords.hpp созданы.")
 
     def _write_reserved_list(self):
         with open("out/system_reserved_identifiers.txt", "w", encoding="utf-8") as f:
@@ -212,7 +216,6 @@ class CppRecursiveDescentGen:
             "    NUMBER,",
             "    STRING,",
             "    SYMBOL,",
-            "    None,",
             "",
         ]
 
@@ -245,7 +248,6 @@ class CppRecursiveDescentGen:
         lines.append('        case TokenType::NUMBER: return "NUMBER";')
         lines.append('        case TokenType::STRING: return "STRING";')
         lines.append('        case TokenType::SYMBOL: return "SYMBOL";')
-        lines.append('        case TokenType::None: return "None";')
 
         # Добавляем case для каждого токена
         for cname in sorted(token_names):
@@ -258,6 +260,221 @@ class CppRecursiveDescentGen:
         with open("out/keywords.hpp", "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
+    def _write_ast_hpp(self):
+        """Генерация ast.hpp - определения классов узлов AST."""
+        lines = [
+            "#pragma once",
+            "#include <string>",
+            "#include <vector>",
+            "#include <memory>",
+            "#include \"keywords.hpp\"",
+            "",
+            "namespace ast {",
+            "",
+            "// =============================================================",
+            "// Базовый класс для всех узлов AST",
+            "// =============================================================",
+            "",
+            "enum class NodeType {",
+            "    TERMINAL,",
+        ]
+
+        # Добавляем типы для всех нетерминалов
+        for head in self.rules:
+            node_name = self.clean_name(head, is_nonterminal=True)
+            lines.append(f"    {node_name},")
+
+        lines.extend([
+            "};",
+            "",
+            "class AstNode {",
+            "public:",
+            "    NodeType type;",
+            "    int line;",
+            "    int col;",
+            "    std::vector<AstNode*> children;",
+            "",
+            "    AstNode(NodeType t) : type(t), line(0), col(0) {}",
+            "    virtual ~AstNode();",
+            "    virtual void print(int depth = 0) const;",
+            "    virtual std::string to_string() const;",
+            "    ",
+            "    void add_child(AstNode* child);",
+            "};",
+            "",
+            "// =============================================================",
+            "// Терминальный узел (токен)",
+            "// =============================================================",
+            "",
+            "class TerminalNode : public AstNode {",
+            "public:",
+            "    parser::TokenType token_type;",
+            "    std::string value;",
+            "    std::string name;",
+            "",
+            "    TerminalNode(parser::TokenType tt, const std::string& val, const std::string& n);",
+            "    void print(int depth = 0) const override;",
+            "    std::string to_string() const override;",
+            "};",
+            "",
+            "// =============================================================",
+            "// Специализированные узлы для нетерминалов",
+            "// =============================================================",
+            "",
+        ])
+
+        # Генерируем классы для каждого нетерминала
+        for head in self.rules:
+            node_name = self.clean_name(head, is_nonterminal=True)
+            class_name = node_name + "Node"
+
+            lines.append(f"class {class_name} : public AstNode {{")
+            lines.append("public:")
+
+            # Собираем все уникальные символы из всех альтернатив
+            child_symbols = []
+            symbol_counts = {}
+
+            for alt in self.rules[head]:
+                for sym in alt:
+                    # Определяем имя для указателя
+                    if self._is_nonterm(sym):
+                        ptr_name = self.clean_name(sym, True).lower()
+                    else:
+                        # Для терминалов используем имя токена
+                        ptr_name = self.clean_name(sym, False).lower()
+
+                    # Считаем количество вхождений
+                    symbol_counts[ptr_name] = symbol_counts.get(ptr_name, 0) + 1
+
+                    if ptr_name not in [cs[0] for cs in child_symbols]:
+                        child_symbols.append((ptr_name, sym))
+
+            # Добавляем указатели на дочерние узлы
+            for ptr_name, sym in child_symbols:
+                count = symbol_counts[ptr_name]
+                if count > 1:
+                    # Если символ встречается несколько раз, создаем вектор
+                    lines.append(f"    std::vector<AstNode*> {ptr_name}_list;")
+                else:
+                    lines.append(f"    AstNode* {ptr_name};")
+
+            lines.append("")
+            lines.append(f"    {class_name}();")
+            lines.append(f"    std::string to_string() const override;")
+            lines.append("};")
+            lines.append("")
+
+        lines.extend([
+            "// =============================================================",
+            "// Утилиты",
+            "// =============================================================",
+            "",
+            "void delete_tree(AstNode* root);",
+            "void print_tree(AstNode* root, int depth = 0);",
+            "",
+            "} // namespace ast",
+        ])
+
+        with open("out/ast.hpp", "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+    def _write_ast_cpp(self):
+        """Генерация ast.cpp - реализация методов узлов AST."""
+        lines = [
+            "#include \"ast.hpp\"",
+            "#include <iostream>",
+            "#include <iomanip>",
+            "",
+            "namespace ast {",
+            "",
+            "// =============================================================",
+            "// Базовый класс AstNode",
+            "// =============================================================",
+            "",
+            "AstNode::~AstNode() {",
+            "    for (auto* child : children) {",
+            "        delete child;",
+            "    }",
+            "}",
+            "",
+            "void AstNode::add_child(AstNode* child) {",
+            "    if (child) {",
+            "        children.push_back(child);",
+            "    }",
+            "}",
+            "",
+            "void AstNode::print(int depth) const {",
+            "    std::cout << std::string(depth * 2, ' ') << to_string() << std::endl;",
+            "    for (const auto* child : children) {",
+            "        if (child) {",
+            "            child->print(depth + 1);",
+            "        }",
+            "    }",
+            "}",
+            "",
+            "std::string AstNode::to_string() const {",
+            "    return \"AstNode\";",
+            "}",
+            "",
+            "// =============================================================",
+            "// Терминальный узел",
+            "// =============================================================",
+            "",
+            "TerminalNode::TerminalNode(parser::TokenType tt, const std::string& val, const std::string& n)",
+            "    : AstNode(NodeType::TERMINAL), token_type(tt), value(val), name(n) {}",
+            "",
+            "void TerminalNode::print(int depth) const {",
+            "    std::cout << std::string(depth * 2, ' ')",
+            "              << \"Terminal: \" << parser::token_to_string(token_type)",
+            "              << \" = '\" << value << \"'\" << std::endl;",
+            "}",
+            "",
+            "std::string TerminalNode::to_string() const {",
+            "    return \"Terminal(\" + parser::token_to_string(token_type) + \": '\" + value + \"')\";",
+            "}",
+            "",
+            "// =============================================================",
+            "// Специализированные узлы",
+            "// =============================================================",
+            "",
+        ]
+
+        # Генерируем реализации для каждого нетерминала
+        for head in self.rules:
+            node_name = self.clean_name(head, is_nonterminal=True)
+            class_name = node_name + "Node"
+
+            lines.extend([
+                f"{class_name}::{class_name}() : AstNode(NodeType::{node_name}) {{}}",
+                "",
+                f"std::string {class_name}::to_string() const {{",
+                f"    return \"{node_name}\";",
+                "}",
+                "",
+            ])
+
+        lines.extend([
+            "// =============================================================",
+            "// Утилиты",
+            "// =============================================================",
+            "",
+            "void delete_tree(AstNode* root) {",
+            "    delete root;",
+            "}",
+            "",
+            "void print_tree(AstNode* root, int depth) {",
+            "    if (root) {",
+            "        root->print(depth);",
+            "    }",
+            "}",
+            "",
+            "} // namespace ast",
+        ])
+
+        with open("out/ast.cpp", "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
     def _write_parser_hpp(self):
         lines = [
             "#pragma once",
@@ -265,6 +482,7 @@ class CppRecursiveDescentGen:
             "#include <string>",
             "#include \"keywords.hpp\"",
             "#include \"lexer.hpp\"",
+            "#include \"ast.hpp\"",
             "",
             "namespace parser {",
             "",
@@ -275,12 +493,13 @@ class CppRecursiveDescentGen:
             "extern TokenType current;",
             "extern lexer::Token current_token;",
             "void gc();",
-            "void parse(lexer::Lexer& lexer, const std::string& path);",
+            "ast::AstNode* parse(lexer::Lexer& lexer, const std::string& path);",
             ""
         ]
 
         for head in self.rules:
-            lines.append(f"void {self.clean_name(head, is_nonterminal=True)}();")
+            func_name = self.clean_name(head, is_nonterminal=True)
+            lines.append(f"ast::AstNode* {func_name}();")
 
         lines.append("\n} // namespace parser")
 
@@ -309,15 +528,17 @@ class CppRecursiveDescentGen:
                 current = current_token.type;
             }
 
-            void parse(lexer::Lexer& lexer, const std::string& path) {
+            ast::AstNode* parse(lexer::Lexer& lexer, const std::string& path) {
                 current_lexer = &lexer;
                 current_file_path = path;
                 gc();
                 
                 std::cout << "Parsing file: " << path << std::endl;
+                ast::AstNode* root = nullptr;
                 try {
-                    TOK_PROGRAM();
+                    root = TOK_PROGRAM();
                     std::cout << "\\nParsing completed successfully.\\n";
+                    return root;
                 } catch (const ParseError& e) {
                     std::cerr << "\\n" << current_file_path << ":" << current_token.line 
                               << ":" << current_token.col << ": error: ";
@@ -346,6 +567,11 @@ class CppRecursiveDescentGen:
                         out.close();
                         std::cerr << "Lexer dump written to lexer_info.txt\\n";
                     }
+                    
+                    if (root) {
+                        ast::delete_tree(root);
+                    }
+                    throw;
                 }
             }
 
@@ -386,34 +612,60 @@ class CppRecursiveDescentGen:
             f.write(header + "\n\n".join(functions) + footer)
 
     # ================================================================
-    # Основная генерация функций
+    # Основная генерация функций (с AST)
     # ================================================================
     def _gen_function(self, head):
         name = self.clean_name(head, is_nonterminal=True)
-        lines = [f"void {name}() {{", f"    CallContext ctx(\"{name}\");"]
+        node_class = name + "Node"
+
+        lines = [
+            f"ast::AstNode* {name}() {{",
+            f"    CallContext ctx(\"{name}\");",
+            f"    ast::{node_class}* node = new ast::{node_class}();",
+            f"    node->line = current_token.line;",
+            f"    node->col = current_token.col;",
+            ""
+        ]
+
         alts = self.rules[head]
 
         for i, alt in enumerate(alts):
             prefix = "if" if i == 0 else "else if"
+
+            # Обработка ε-правил
             if not alt:
-                lines.append(f"    {prefix} (true) {{ /* ε */ return; }}")
+                lines.append(f"    {prefix} (true) {{ /* ε */ return node; }}")
                 continue
 
             cond = self._make_condition(alt)
             lines.append(f"    {prefix} ({cond}) {{")
+
+            # Обработка каждого символа в альтернативе
             for sym in alt:
                 if self._is_nonterm(sym):
-                    lines.append(f"        {self.clean_name(sym, True)}();")
+                    # Нетерминал - вызываем функцию и добавляем результат как дочерний узел
+                    child_func = self.clean_name(sym, True)
+                    lines.append(f"        ast::AstNode* child_{child_func.lower()} = {child_func}();")
+                    lines.append(f"        node->add_child(child_{child_func.lower()});")
                 else:
+                    # Терминал - создаём терминальный узел и продвигаемся
                     token = self.clean_name(sym, False)
-
-                    lines.append(f"        if (current != TokenType::{token}) "
-                                 f"syntax_error(\"expected {token} in {name}\");")
+                    lines.append(f"        if (current != TokenType::{token}) {{")
+                    lines.append(f"            delete node;")
+                    lines.append(f"            syntax_error(\"expected {token} in {name}\");")
+                    lines.append(f"        }}")
+                    lines.append(f"        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));")
                     lines.append("        gc();")
-            lines.append("        return; }")
 
+            lines.append("        return node;")
+            lines.append("    }")
+
+        # Обработка ошибки
+        lines.append("    delete node;")
         lines.append(f'    syntax_error(\"unexpected token \"+token_to_string(current)+\" in {name}\");')
+        lines.append("    return nullptr;")
         lines.append("}")
+
         return "\n".join(lines)
 
     def _make_condition(self, alt):
@@ -436,7 +688,7 @@ class CppRecursiveDescentGen:
         return sym.startswith("<") and sym.endswith(">")
 
     @staticmethod
-    def clean_name(sym, is_nonterminal=False):
+    def clean_name(sym:str, is_nonterminal=False):
         s = sym.strip()
         if sym in ['IDENTIFIER','STRING','NUMBER']:
             return s
@@ -449,8 +701,7 @@ class CppRecursiveDescentGen:
         s = s.strip('"').strip()
 
         # Пустые строки пропускаем
-        if not s:
-            return None
+
 
         # Специальные двухсимвольные операторы
         special_map = {
@@ -487,7 +738,7 @@ class CppRecursiveDescentGen:
         s = re.sub(r'[^A-Za-z0-9_]+', '_', s)
         if s:
             return "TOK_" + s.upper()
-        return None
+        return 'None'
 
 
 # ================================================================
