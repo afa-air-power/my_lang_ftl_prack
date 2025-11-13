@@ -8,9 +8,10 @@
   - out/keywords.hpp
   - out/ast.hpp
   - out/ast.cpp
-  - out/ast_utils.hpp       <- НОВОЕ: утилиты печати/семантики/оптимизаций
-  - out/ast_utils.cpp       <- НОВОЕ: реализация утилит
+  - out/ast_utils.hpp       <- утилиты печати/семантики/оптимизаций
+  - out/ast_utils.cpp       <- реализация утилит
   - out/system_reserved_identifiers.txt
+
 Примечание: функционал генерации, интерфейсы и существующие файлы оставлены без изменения.
 Новый код добавляет дополнительные вспомогательные файлы и вставляет вызовы в сгенерированный parser.cpp.
 """
@@ -62,7 +63,7 @@ class GrammarCleaner:
             for ln in cleaned:
                 f.write(ln + "\n")
 
-        print(f" Очистка завершена. Сохранена резервная копия: {backup}")
+        print(f"Очистка завершена. Сохранена резервная копия: {backup}")
 
 
 # ================================================================
@@ -392,8 +393,11 @@ class CppRecursiveDescentGen:
             "#include \"ast.hpp\"",
             "#include <iostream>",
             "#include <iomanip>",
-            "",
+
+            "extern std::string current_file_path;"
+            ,
             "namespace ast {",
+
             "",
             "// =============================================================",
             "// Базовый класс AstNode",
@@ -509,7 +513,7 @@ class CppRecursiveDescentGen:
             f.write("\n".join(lines))
 
     # ================================================================
-    # НОВОЕ: генерация ast_utils.cpp
+    # НОВОЕ: генерация ast_utils.cpp (с расширенной семантикой типов и классов)
     # ================================================================
     def _write_ast_utils_cpp(self):
         lines = [
@@ -518,8 +522,11 @@ class CppRecursiveDescentGen:
             "#include <iostream>",
             "#include <sstream>",
             "#include <unordered_set>",
+            "#include <unordered_map>",
             "#include <vector>",
+            "#include <algorithm>",
             "",
+            "extern std::string current_file_path;",
             "namespace ast {",
             "",
             "// ----------------- Печать -----------------",
@@ -541,64 +548,170 @@ class CppRecursiveDescentGen:
             "    out.close();",
             "}",
             "",
-            "// ----------------- Простая семаника -----------------",
+            "// ----------------- Семаника с поддержкой пользовательских классов -----------------",
             "struct SemanticState {",
-            "    std::vector<std::unordered_set<std::string>> scopes;",
+            "    std::vector<std::unordered_set<std::string>> scopes; // стек областей видимости для переменных",
+            "    std::unordered_set<std::string> known_types;        // базовые + пользовательские типы",
             "    std::vector<std::string> messages;",
+            "",
             "    void push_scope() { scopes.emplace_back(); }",
             "    void pop_scope() { if (!scopes.empty()) scopes.pop_back(); }",
-            "    void declare(const std::string& name) { if (scopes.empty()) push_scope(); scopes.back().insert(name); }",
-            "    bool is_declared(const std::string& name) const {",
+            "    void declare_var(const std::string& name) { if (scopes.empty()) push_scope(); scopes.back().insert(name); }",
+            "    bool is_var_declared(const std::string& name) const {",
             "        for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) if (it->count(name)) return true;",
             "        return false;",
             "    }",
-            "    void warn(const std::string& s) { messages.push_back(s); }",
+            "    void add_type(const std::string& t) { known_types.insert(t); }",
+            "    bool is_known_type(const std::string& t) const { return known_types.count(t) != 0; }",
+            "    void warn(AstNode* node, const std::string& msg) {",
+            " std::ostringstream ss;",
+            'ss <<"test_program.txt:" << node->line << ":" << node->col <<" " << msg;',
+            "  messages.push_back(ss.str());",
+            "}",
+
             "};",
             "",
+            "// helper: найти первый терминальный идентификатор в поддереве",
             "static std::string find_first_identifier_in_subtree(AstNode* node) {",
             "    if (!node) return {};",
-            "    // ищем терминальный узел с типом IDENTIFIER",
+            "    auto* tn = dynamic_cast<TerminalNode*>(node);",
+            "    if (tn && tn->token_type == parser::TokenType::IDENTIFIER) return tn->value;",
             "    for (auto* c : node->children) {",
-            "        auto* tn = dynamic_cast<TerminalNode*>(c);",
-            "        if (tn) {",
-            "            if (tn->token_type == parser::TokenType::IDENTIFIER) return tn->value;",
-            "        }",
             "        auto r = find_first_identifier_in_subtree(c);",
             "        if (!r.empty()) return r;",
             "    }",
             "    return {};",
             "}",
             "",
-            "static void collect_decls_and_check(AstNode* node, SemanticState& st) {",
+            "// helper: найти первый тип в поддереве (базовый или пользовательский). Возвращает строку лексемы типа, если найдена.",
+            "static std::string find_first_type_in_subtree(AstNode* node) {",
+            "    if (!node) return {};",
+            "    // сначала проверяем терминальный узел",
+            "    if (auto* tn = dynamic_cast<TerminalNode*>(node)) {",
+            "        std::string v = tn->value;",
+            "        // базовые типы (по лексеме)",
+            "        if (v == \"int\" || v == \"float\" || v == \"double\" || v == \"string\" || v == \"bool\" || v == \"void\")",
+            "            return v;",
+            "        // пользовательские типы тоже представлены как IDENTIFIER терминалы — вернём их значение при необходимости",
+            "    }",
+            "    // если узел сам подписан как тип (например, нетерминал TOK_TYPE), то спускаемся внутрь",
+            "    if (node->to_string().find(\"TOK_TYPE\") != std::string::npos || node->to_string().find(\"TYPE\") != std::string::npos) {",
+            "        for (auto* c : node->children) {",
+            "            if (auto* t = dynamic_cast<TerminalNode*>(c)) {",
+            "                std::string val = t->value;",
+            "                if (!val.empty()) return val;",
+            "            }",
+            "            auto r = find_first_type_in_subtree(c);",
+            "            if (!r.empty()) return r;",
+            "        }",
+            "        return {};",
+            "    }",
+            "    // рекурсивно ищем тип в дочерних узлах",
+            "    for (auto* c : node->children) {",
+            "        auto r = find_first_type_in_subtree(c);",
+            "        if (!r.empty()) return r;",
+            "    }",
+            "    return {};",
+            "}",
+            "",
+            "// Проход по дереву для сбора объявлений типов (классы) и объявления переменных (в глобальной области)",
+            "static void semantic_collect_defs(AstNode* node, SemanticState& st) {",
             "    if (!node) return;",
             "    std::string nodename = node->to_string();",
-            "    // если имя узла содержит DECL/PARAM/CLASS/FUNCTION/VAR - считаем это объявлением (best-effort)",
-            "    if (nodename.find(\"DECL\") != std::string::npos || nodename.find(\"PARAM\") != std::string::npos ||",
-            "        nodename.find(\"CLASS\") != std::string::npos || nodename.find(\"FUNC\") != std::string::npos ||",
-            "        nodename.find(\"VAR\") != std::string::npos) {",
-            "        auto id = find_first_identifier_in_subtree(node);",
-            "        if (!id.empty()) st.declare(id);",
+            "",
+            "    // Если это определение класса — распознаём по названию узла, содержащему 'CLASS' или 'CLASSDECL'",
+            "    if (nodename==\"TOK_CLASSDECL\") {",
+            "        auto cname = find_first_identifier_in_subtree(node);",
+            "        if (!cname.empty()) {",
+            "            st.add_type(cname);",
+            "        }",
             "    }",
             "",
-            "    // проверяем терминалы-идентификаторы на использование",
+            "    // Также можно искать и добавлять другие декларации типов (typedef/enum) при необходимости",
+            "",
+            "    for (auto* c : node->children) semantic_collect_defs(c, st);",
+            "}",
+            "",
+            "// Второй проход: проверка объявлений переменных/параметров и использование идентификаторов",
+            "static void semantic_check_and_validate(AstNode* node, SemanticState& st) {",
+            "    if (!node) return;",
+            "    std::string nodename = node->to_string();",
+            "",
+            "    // открыть новую область для функциональных/блочных узлов (best-effort)",
+            "    bool opened_scope = false;",
+            "    if (nodename.find(\"FUNCTION\") != std::string::npos || nodename.find(\"FUNC\") != std::string::npos ||",
+            "        nodename.find(\"COMPOUND\") != std::string::npos || nodename.find(\"BLOCK\") != std::string::npos) {",
+            "        st.push_scope(); opened_scope = true;",
+            "    }",
+            "",
+            """    if ((nodename=="TOK_DECLARATION")||
+             ( nodename == \"TOK_MEMBER\" and  nodename != \"TOK_MEMBERSUFFIX\" && nodename != \"TOK_MEMBERLIST\") ||
+               nodename== "TOK_PARAM"
+               || nodename==("TOK_VAR") 
+               || nodename==("TOK_LOCALVARDECL"))
+               {""",
+            "        auto id = find_first_identifier_in_subtree(node);",
+            "        auto t = find_first_type_in_subtree(node);",
+            "        if (id.empty()) {",
+            "            st.warn(node,std::string(\"error: declaration missing identifier name in node \") + nodename);",
+            "        } else {",
+            "            if (t.empty()) {",
+            "                st.warn(node,std::string(\"error: declaration of '\") + id + \"' missing data type\");",
+            "            } else {",
+            "                // если это базовый тип — ок; иначе — проверь, известен ли пользовательский тип",
+            "                if (t == \"int\" || t == \"float\" || t == \"double\" || t == \"string\" || t == \"bool\" || t == \"void\") {",
+            "                    // ок",
+            "                } else {",
+            "                    if (!st.is_known_type(t)) {",
+            "                        st.warn(node, std::string(\"error: declaration of '\") + id + \"' has unknown type '\" + t + \"'\");",
+            "                    }",
+            "                }",
+            "            }",
+            "            // зарегистрируем имя переменной в текущей области (даже при ошибке типа, чтобы не засорять последующие сообщения)",
+            "            st.declare_var(id);",
+            "        }",
+            "    }",
+            "",
+            "    // Использования идентификаторов — проверяем терминальные IDENTIFIER не являющиеся объявлениями типов",
             "    for (auto* c : node->children) {",
-            "        auto* tn = dynamic_cast<TerminalNode*>(c);",
-            "        if (tn && tn->token_type == parser::TokenType::IDENTIFIER) {",
-            "            if (!st.is_declared(tn->value)) {",
-            "                std::ostringstream ss;",
-            "                ss << \"semantic warning: identifier '\" << tn->value << \"' might be used before declaration\";",
-            "                st.warn(ss.str());",
+            "        if (auto* tn = dynamic_cast<TerminalNode*>(c)) {",
+            "            if (tn->token_type == parser::TokenType::IDENTIFIER) {",
+            "                std::string name = tn->value;",
+            "                // если это имя типа (например, использование типа в выражении) — пропускаем; иначе проверяем переменную",
+            "                if (!st.is_var_declared(name) && !st.is_known_type(name)) {",
+            "                    // возможно, это обращение к полю через DOT (будет представлен как отдельные токены) — best-effort",
+            "                    st.warn(node, std::string(\"error: identifier '\") + name + \"' used before declaration\");",
+            "                }",
             "            }",
             "        }",
-            "        collect_decls_and_check(c, st);",
+            "        semantic_check_and_validate(c, st);",
             "    }",
+            "",
+            "    if (opened_scope) st.pop_scope();",
             "}",
             "",
             "bool semantic_check(AstNode* root) {",
-            "    SemanticState st; st.push_scope();",
-            "    collect_decls_and_check(root, st);",
+            "    if (!root) return true;",
+            "    SemanticState st;",
+            "    // добавить базовые типы",
+            "    st.add_type(\"int\"); st.add_type(\"float\"); st.add_type(\"double\"); st.add_type(\"string\"); st.add_type(\"bool\"); st.add_type(\"void\");st.add_type(\"vector\");",
+            "",
+            "    // --- Первый проход: собрать все декларации типов (например, классы) ---",
+            "    try {",
+            "        semantic_collect_defs(root, st);",
+            "    } catch (const std::exception &e) {",
+            "        std::cerr << \"semantic collection threw: \" << e.what() << \"\\n\";",
+            "    }",
+            "",
+            "    // --- Второй проход: проверить объявления и использования ---",
+            "    try {",
+            "        semantic_check_and_validate(root, st);",
+            "    } catch (const std::exception &e) {",
+            "        std::cerr << \"semantic validation threw: \" << e.what() << \"\\n\";",
+            "    }",
+            "",
             "    if (!st.messages.empty()) {",
-            "        for (auto& m : st.messages) std::cerr << m << \"\\n\";",
+            "        for (auto &m : st.messages) std::cerr << m << \"\\n\";",
             "        return false;",
             "    }",
             "    return true;",
@@ -651,6 +764,7 @@ class CppRecursiveDescentGen:
             "}",
             "",
             "void optimize_ast(AstNode* root) {",
+            "    if (!root) return;",
             "    // несколько проходов для более глубокого свёртывания",
             "    for (int i = 0; i < 3; ++i) optimize_node(root);",
             "}",
@@ -867,7 +981,8 @@ class CppRecursiveDescentGen:
                     lines.append(f"            delete node;")
                     lines.append(f"            syntax_error(\"expected {token} in {name}\");")
                     lines.append(f"        }}")
-                    lines.append(f"        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));")
+                    lines.append(
+                        f"        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));")
                     lines.append("        gc();")
 
             lines.append("        return node;")
@@ -901,9 +1016,9 @@ class CppRecursiveDescentGen:
         return sym.startswith("<") and sym.endswith(">")
 
     @staticmethod
-    def clean_name(sym:str, is_nonterminal=False):
+    def clean_name(sym: str, is_nonterminal=False):
         s = sym.strip()
-        if sym in ['IDENTIFIER','STRING','NUMBER']:
+        if sym in ['IDENTIFIER', 'STRING', 'NUMBER']:
             return s
 
         if is_nonterminal or (s.startswith("<") and s.endswith(">")):
@@ -914,7 +1029,6 @@ class CppRecursiveDescentGen:
         s = s.strip('"').strip()
 
         # Пустые строки пропускаем
-
 
         # Специальные двухсимвольные операторы
         special_map = {
