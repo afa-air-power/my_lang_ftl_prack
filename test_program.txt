@@ -71,9 +71,11 @@ int IHYFIR87RI7U;
 int main() {
     int now;
     now = 0;
+    human p0;
+    human p1;
+    human p2;
+    human p3;
 
-    i k = main;
-    k = ((a)+b);
 
     // --- Инициализация (примерные значения) ---
     p0.id = 0;
