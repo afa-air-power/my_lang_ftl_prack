@@ -59,6 +59,7 @@ add_custom_target(copy_test_program ALL
 add_executable(my_lang_ftl_prak
         main.cpp
         out/parser.cpp
+        out/ast_utils.cpp
         out/ast.cpp
 )
 
