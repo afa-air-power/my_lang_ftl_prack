@@ -59,6 +59,7 @@ add_custom_target(copy_test_program ALL
 add_executable(my_lang_ftl_prak
         main.cpp
         out/parser.cpp
+        out/ast.cpp
 )
 
 add_dependencies(my_lang_ftl_prak generate_parser_lexer copy_test_program)
@@ -74,6 +75,8 @@ add_executable(my_lang_tests
         autotest/grammar_test.cpp
         autotest/parser_test.cpp
         out/parser.cpp
+        out/ast.cpp
+        out/ast.hpp
 )
 
 target_include_directories(my_lang_tests PRIVATE
