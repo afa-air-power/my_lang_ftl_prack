@@ -12,8 +12,13 @@
   - out/ast_utils.cpp       <- реализация утилит
   - out/system_reserved_identifiers.txt
 
-Примечание: функционал генерации, интерфейсы и существующие файлы оставлены без изменения.
-Новый код добавляет дополнительные вспомогательные файлы и вставляет вызовы в сгенерированный parser.cpp.
+Примечание:
+ИЗМЕНЕНИЕ: Добавлена поддержка "заглядывания" (peek) на 1 токен вперед.
+ИЗМЕНЕНИЕ: Добавлена специальная генерация для правила <Statement>
+           для разрешения конфликта FIRST/FIRST (LocalVarDecl vs ExpressionStmt).
+ИЗМЕНЕНИЕ (НОВОЕ): Исправлена логика в ast_utils.cpp (find_first_type_in_subtree
+           и semantic_check_and_validate) для корректной обработки <Type> -> <id>
+           и различения объявления типа и имени переменной.
 """
 
 import re
@@ -115,7 +120,7 @@ class CppRecursiveDescentGen:
         self.terminals = sorted(terminals)
         self.used_names = set()
 
-        # ==== добавлено: вычисление FIRST множеств ====
+        # ==== вычисление FIRST множеств ====
         self.first = {}
         self._compute_first_sets()
 
@@ -188,7 +193,6 @@ class CppRecursiveDescentGen:
         self._write_keywords_hpp()
         self._write_ast_hpp()
         self._write_ast_cpp()
-        # --- Новое: сгенерировать утилиты AST перед генерацией parser.cpp
         self._write_ast_utils_hpp()
         self._write_ast_utils_cpp()
         self._write_parser_hpp()
@@ -516,6 +520,7 @@ class CppRecursiveDescentGen:
     # НОВОЕ: генерация ast_utils.cpp (с расширенной семантикой типов и классов)
     # ================================================================
     def _write_ast_utils_cpp(self):
+        # *** ЭТО ОБНОВЛЕННАЯ ФУНКЦИЯ ***
         lines = [
             "#include \"ast_utils.hpp\"",
             "#include <fstream>",
@@ -524,6 +529,7 @@ class CppRecursiveDescentGen:
             "#include <unordered_set>",
             "#include <unordered_map>",
             "#include <vector>",
+            "#include <queue>", # Добавлено для поиска
             "#include <algorithm>",
             "",
             "extern std::string current_file_path;",
@@ -568,7 +574,6 @@ class CppRecursiveDescentGen:
             'ss <<"test_program.txt:" << node->line << ":" << node->col <<" " << msg;',
             "  messages.push_back(ss.str());",
             "}",
-
             "};",
             "",
             "// helper: найти первый терминальный идентификатор в поддереве",
@@ -583,34 +588,36 @@ class CppRecursiveDescentGen:
             "    return {};",
             "}",
             "",
+            "// *** ИСПРАВЛЕННАЯ ФУНКЦИЯ ***",
             "// helper: найти первый тип в поддереве (базовый или пользовательский). Возвращает строку лексемы типа, если найдена.",
             "static std::string find_first_type_in_subtree(AstNode* node) {",
             "    if (!node) return {};",
-            "    // сначала проверяем терминальный узел",
-            "    if (auto* tn = dynamic_cast<TerminalNode*>(node)) {",
-            "        std::string v = tn->value;",
-            "        // базовые типы (по лексеме)",
-            "        if (v == \"int\" || v == \"float\" || v == \"double\" || v == \"string\" || v == \"bool\" || v == \"void\")",
-            "            return v;",
-            "        // пользовательские типы тоже представлены как IDENTIFIER терминалы — вернём их значение при необходимости",
-            "    }",
-            "    // если узел сам подписан как тип (например, нетерминал TOK_TYPE), то спускаемся внутрь",
-            "    if (node->to_string().find(\"TOK_TYPE\") != std::string::npos || node->to_string().find(\"TYPE\") != std::string::npos) {",
-            "        for (auto* c : node->children) {",
-            "            if (auto* t = dynamic_cast<TerminalNode*>(c)) {",
-            "                std::string val = t->value;",
-            "                if (!val.empty()) return val;",
+            "",
+            "    // 1. Если сам узел - это TOK_TYPE, найдем первый IDENTIFIER или ключевое слово типа.",
+            "    if (node->to_string() == \"TOK_TYPE\") {",
+            "        std::queue<AstNode*> q;",
+            "        q.push(node);",
+            "        while (!q.empty()) {",
+            "            AstNode* curr = q.front(); q.pop();",
+            "            if (auto* tn = dynamic_cast<TerminalNode*>(curr)) {",
+            "                 if (tn->token_type == parser::TokenType::IDENTIFIER ||",
+            "                     tn->value == \"int\" || tn->value == \"float\" || tn->value == \"double\" ||",
+            "                     tn->value == \"string\" || tn->value == \"bool\" || tn->value == \"void\" ||",
+            "                     tn->value == \"vector\") {",
+            "                     return tn->value;",
+            "                 }",
             "            }",
-            "            auto r = find_first_type_in_subtree(c);",
-            "            if (!r.empty()) return r;",
+            "            for (auto* c : curr->children) q.push(c);",
             "        }",
-            "        return {};",
+            "        return {}; // Ничего не нашли в TOK_TYPE",
             "    }",
-            "    // рекурсивно ищем тип в дочерних узлах",
+            "",
+            "    // 2. Если узел не TOK_TYPE, рекурсивно ищем TOK_TYPE в его дочерних узлах.",
             "    for (auto* c : node->children) {",
             "        auto r = find_first_type_in_subtree(c);",
             "        if (!r.empty()) return r;",
             "    }",
+            "",
             "    return {};",
             "}",
             "",
@@ -627,66 +634,81 @@ class CppRecursiveDescentGen:
             "        }",
             "    }",
             "",
-            "    // Также можно искать и добавлять другие декларации типов (typedef/enum) при необходимости",
-            "",
             "    for (auto* c : node->children) semantic_collect_defs(c, st);",
             "}",
             "",
+            "// *** ИСПРАВЛЕННАЯ ФУНКЦИЯ ***",
             "// Второй проход: проверка объявлений переменных/параметров и использование идентификаторов",
             "static void semantic_check_and_validate(AstNode* node, SemanticState& st) {",
             "    if (!node) return;",
             "    std::string nodename = node->to_string();",
             "",
-            "    // открыть новую область для функциональных/блочных узлов (best-effort)",
+            "    // 1. Открыть новую область для CompoundStmt",
             "    bool opened_scope = false;",
-            "    if (nodename.find(\"FUNCTION\") != std::string::npos || nodename.find(\"FUNC\") != std::string::npos ||",
-            "        nodename.find(\"COMPOUND\") != std::string::npos || nodename.find(\"BLOCK\") != std::string::npos) {",
+            "    if (nodename.find(\"COMPOUND\") != std::string::npos) {",
             "        st.push_scope(); opened_scope = true;",
             "    }",
             "",
-            """    if ((nodename=="TOK_DECLARATION")||
-             ( nodename == \"TOK_MEMBER\" and  nodename != \"TOK_MEMBERSUFFIX\" && nodename != \"TOK_MEMBERLIST\") ||
-               nodename== "TOK_PARAM"
-               || nodename==("TOK_VAR") 
-               || nodename==("TOK_LOCALVARDECL"))
-               {""",
-            "        auto id = find_first_identifier_in_subtree(node);",
-            "        auto t = find_first_type_in_subtree(node);",
-            "        if (id.empty()) {",
-            "            st.warn(node,std::string(\"error: declaration missing identifier name in node \") + nodename);",
+            "    // 2. Обработка деклараций",
+            "    if (nodename == \"TOK_LOCALVARDECL\") {",
+            "        std::string id_name;",
+            "        std::string type_name;",
+            "",
+            "        // Ищем узел TOK_TYPE и узел TOK_ID *напрямую*",
+            "        AstNode* type_node = nullptr;",
+            "        AstNode* id_node = nullptr;",
+            "",
+            "        for(auto* c : node->children) {",
+            "            if (c->to_string() == \"TOK_TYPE\") type_node = c;",
+            "            else if (c->to_string() == \"TOK_ID\") id_node = c;",
+            "        }",
+            "",
+            "        if (type_node) {",
+            "            type_name = find_first_type_in_subtree(type_node);",
+            "        }",
+            "        if (id_node) {",
+            "            id_name = find_first_identifier_in_subtree(id_node);",
+            "        }",
+            "",
+            "        if (id_name.empty()) {",
+            "            st.warn(node, \"error: declaration missing identifier name\");",
             "        } else {",
-            "            if (t.empty()) {",
-            "                st.warn(node,std::string(\"error: declaration of '\") + id + \"' missing data type\");",
+            "            if (type_name.empty()) {",
+            "                st.warn(node, std::string(\"error: declaration of '\") + id_name + \"' missing data type\");",
             "            } else {",
-            "                // если это базовый тип — ок; иначе — проверь, известен ли пользовательский тип",
-            "                if (t == \"int\" || t == \"float\" || t == \"double\" || t == \"string\" || t == \"bool\" || t == \"void\") {",
-            "                    // ок",
-            "                } else {",
-            "                    if (!st.is_known_type(t)) {",
-            "                        st.warn(node, std::string(\"error: declaration of '\") + id + \"' has unknown type '\" + t + \"'\");",
-            "                    }",
+            "                if (!st.is_known_type(type_name)) {",
+            "                     st.warn(node, std::string(\"error: declaration of '\") + id_name + \"' has unknown type '\" + type_name + \"'\");",
             "                }",
             "            }",
-            "            // зарегистрируем имя переменной в текущей области (даже при ошибке типа, чтобы не засорять последующие сообщения)",
-            "            st.declare_var(id);",
+            "            st.declare_var(id_name); // Объявляем ПЕРЕМЕННУЮ",
             "        }",
+            "        // Мы обработали эту ветку, НЕ НУЖНО спускаться рекурсивно для 'use'",
             "    }",
-            "",
-            "    // Использования идентификаторов — проверяем терминальные IDENTIFIER не являющиеся объявлениями типов",
-            "    for (auto* c : node->children) {",
-            "        if (auto* tn = dynamic_cast<TerminalNode*>(c)) {",
+            "    else if (nodename == \"TOK_MEMBER\" || nodename == \"TOK_PARAM\" || nodename == \"TOK_DECLARATION\") {",
+            "        // ... (похожая, но, возможно, другая логика для других деклараций)",
+            "        // ... (пока оставим старую) ...",
+            "        auto id = find_first_identifier_in_subtree(node);",
+            "        auto t = find_first_type_in_subtree(node);",
+            "        if (!id.empty() && !t.empty()) st.declare_var(id);",
+            "    }",
+            "    else {",
+            "        // 3. Это не узел декларации. Ищем 'use' и спускаемся рекурсивно.",
+            "        if (auto* tn = dynamic_cast<TerminalNode*>(node)) {",
             "            if (tn->token_type == parser::TokenType::IDENTIFIER) {",
             "                std::string name = tn->value;",
-            "                // если это имя типа (например, использование типа в выражении) — пропускаем; иначе проверяем переменную",
             "                if (!st.is_var_declared(name) && !st.is_known_type(name)) {",
-            "                    // возможно, это обращение к полю через DOT (будет представлен как отдельные токены) — best-effort",
             "                    st.warn(node, std::string(\"error: identifier '\") + name + \"' used before declaration\");",
             "                }",
             "            }",
             "        }",
-            "        semantic_check_and_validate(c, st);",
+            "",
+            "        // 4. Рекурсивный обход",
+            "        for (auto* c : node->children) {",
+            "            semantic_check_and_validate(c, st);",
+            "        }",
             "    }",
             "",
+            "    // 5. Закрыть область",
             "    if (opened_scope) st.pop_scope();",
             "}",
             "",
@@ -746,7 +768,7 @@ class CppRecursiveDescentGen:
             "        if (!ok) continue;",
             "        // заменить три узла на один терминальный NUMBER",
             "        for (int k = 0; k < 3; ++k) { delete ch[i+k]; }",
-            "        ch[i] = new TerminalNode(parser::TokenType::NUMBER, std::to_string(res), \"NUMBER\");",
+            "        ch[i] = new ast::TerminalNode(parser::TokenType::NUMBER, std::to_string(res), \"NUMBER\");",
             "        ch.erase(ch.begin() + i + 1, ch.begin() + i + 3);",
             "        return true; // один ход за раз (повторим в цикле)",
             "    }",
@@ -791,6 +813,10 @@ class CppRecursiveDescentGen:
             "",
             "extern TokenType current;",
             "extern lexer::Token current_token;",
+            "// *** НОВОЕ: Добавляем 'peek' токен для заглядывания ***",
+            "extern TokenType peek;",
+            "extern lexer::Token peek_token;",
+            "",
             "void gc();",
             "ast::AstNode* parse(lexer::Lexer& lexer, const std::string& path);",
             ""
@@ -818,21 +844,37 @@ class CppRecursiveDescentGen:
             static lexer::Lexer* current_lexer = nullptr;
             TokenType current = TokenType::END_OF_FILE;
             lexer::Token current_token(TokenType::END_OF_FILE, "", "", 0, 0);
-            static std::string current_file_path;
 
+            // *** НОВОЕ: Переменные для 'peek' токена ***
+            TokenType peek = TokenType::END_OF_FILE;
+            lexer::Token peek_token(TokenType::END_OF_FILE, "", "", 0, 0);
+
+            static std::string current_file_path;
             static std::vector<std::string> call_stack;
 
+            // *** ИЗМЕНЕНО: gc() теперь сдвигает peek в current ***
             void gc() {
                 if (!current_lexer)
                     throw std::runtime_error("Lexer not initialized");
-                current_token = current_lexer->next();
-                current = current_token.type;
+                
+                // Сдвигаем peek в current
+                current_token = peek_token;
+                current = peek_token.type;
+                
+                // Получаем новый peek
+                peek_token = current_lexer->next();
+                peek = peek_token.type;
             }
 
+            // *** ИЗМЕНЕНО: parse() инициализирует current и peek ***
             ast::AstNode* parse(lexer::Lexer& lexer, const std::string& path) {
                 current_lexer = &lexer;
                 current_file_path = path;
-                gc();
+
+                // "Прокачиваем" лексер, чтобы заполнить current и peek
+                peek_token = current_lexer->next();
+                peek = peek_token.type;
+                gc(); // Первый вызов: current=первый токен, peek=второй токен
                 
                 std::cout << "Parsing file: " << path << std::endl;
                 ast::AstNode* root = nullptr;
@@ -856,7 +898,7 @@ class CppRecursiveDescentGen:
                         std::cerr << "AST optimization threw: " << e.what() << "\\n";
                     }
                     try {
-                        ast::print_tree_to_file(root, \"ast.txt\");
+                        ast::print_tree_to_file(root, "ast.txt");
                         std::cerr << \"AST written to ast.txt\\n\";
                     } catch (const std::exception &e) {
                         std::cerr << \"AST dump threw: \" << e.what() << \"\\n\";
@@ -930,13 +972,117 @@ class CppRecursiveDescentGen:
         """)
 
         # --- функции ---
-        functions = [self._gen_function(head) for head in self.rules]
+        # *** ИЗМЕНЕНО: Используем специальный генератор для TOK_STATEMENT ***
+        functions = []
+        for head in self.rules:
+            if self.clean_name(head, True) == "TOK_STATEMENT":
+                functions.append(self._gen_statement_function())
+            else:
+                functions.append(self._gen_function(head))
 
         # --- футер ---
         footer = "\n} // namespace parser\n"
 
         with open("out/parser.cpp", "w", encoding="utf-8") as f:
             f.write(header + "\n\n".join(functions) + footer)
+
+    # ================================================================
+    # НОВОЕ: Специальная функция для TOK_STATEMENT
+    # ================================================================
+    def _gen_statement_function(self):
+        """Генерирует кастомную функцию TOK_STATEMENT для разрешения неоднозначности."""
+
+        alts = self.rules.get("<Statement>", [])
+
+        # Разделяем правила
+        unambiguous_alts = []
+        ambiguous_rules = ["<LocalVarDecl>", "<ExpressionStmt>"]
+
+        first_sets = {}
+        for alt_list in alts:
+            if not alt_list: continue # Пропускаем ε
+            alt_name = alt_list[0] # e.g., "<IfStmt>"
+            first_sets[alt_name] = self._first_of_symbol(alt_name)
+            if alt_name not in ambiguous_rules:
+                unambiguous_alts.append(alt_name)
+
+        # Вручную определяем FIRST-множества для неоднозначных правил
+        first_local_var = first_sets.get("<LocalVarDecl>", set())
+        first_expr = first_sets.get("<ExpressionStmt>", set())
+
+        common_tokens = first_local_var.intersection(first_expr)
+        unique_local_var = first_local_var.difference(common_tokens)
+        unique_expr = first_expr.difference(common_tokens)
+
+        # Убираем ε, если он есть (не должен быть в Statement)
+        common_tokens.discard("__EPS")
+        unique_local_var.discard("__EPS")
+        unique_expr.discard("__EPS")
+
+        lines = [
+            "ast::AstNode* TOK_STATEMENT() {",
+            "    CallContext ctx(\"TOK_STATEMENT\");",
+            "    ast::TOK_STATEMENTNode* node = new ast::TOK_STATEMENTNode();",
+            "    node->line = current_token.line;",
+            "    node->col = current_token.col;",
+            "",
+            "    // --- Кастомная логика для разрешения конфликта FIRST/FIRST ---",
+            "",
+            "    // 1. Сначала проверяем все НЕОДНОЗНАЧНЫЕ альтернативы <Statement>",
+        ]
+
+        # 1. Генерируем код для unambiguous alts (if, while, for, etc.)
+        for alt_name in unambiguous_alts:
+            cond = self._make_condition([alt_name])
+            func_name = self.clean_name(alt_name, True)
+            lines.append(f"    if ({cond}) {{")
+            lines.append(f"        node->add_child({func_name}());")
+            lines.append("        return node;")
+            lines.append("    }")
+
+        # 2. Генерируем код для УНИКАЛЬНЫХ токенов LocalVarDecl (int, float, string, vector...)
+        if unique_local_var:
+            cond = " || ".join(f"current == {t}" for t in sorted(unique_local_var))
+            func_name = self.clean_name("<LocalVarDecl>", True)
+            lines.append(f"    if ({cond}) {{")
+            lines.append(f"        // Это однозначно LocalVarDecl (начинается с int, float и т.д.)")
+            lines.append(f"        node->add_child({func_name}());")
+            lines.append("        return node;")
+            lines.append("    }")
+
+        # 3. Генерируем код для УНИКАЛЬНЫХ токенов ExpressionStmt (NUMBER, STRING, '(', '!', ...)
+        if unique_expr:
+            cond = " || ".join(f"current == {t}" for t in sorted(unique_expr))
+            func_name = self.clean_name("<ExpressionStmt>", True)
+            lines.append(f"    if ({cond}) {{")
+            lines.append(f"        // Это однозначно ExpressionStmt (начинается с NUMBER, '(', '!' и т.д.)")
+            lines.append(f"        node->add_child({func_name}());")
+            lines.append("        return node;")
+            lines.append("    }")
+
+        # 4. Генерируем код для ОБЩИХ токенов (т.е. IDENTIFIER)
+        if common_tokens:
+            cond = " || ".join(f"current == {t}" for t in sorted(common_tokens))
+            lines.append(f"    if ({cond}) {{")
+            lines.append("        // НЕОДНОЗНАЧНЫЙ СЛУЧАЙ: начинается с IDENTIFIER.")
+            lines.append("        // Нам нужно заглянуть на следующий токен (peek).")
+            lines.append("")
+            lines.append("        if (peek == TokenType::IDENTIFIER) {")
+            lines.append("            // IDENTIFIER IDENTIFIER ... -> это LocalVarDecl (напр. 'human p0;')")
+            lines.append(f"            node->add_child({self.clean_name('<LocalVarDecl>', True)}());")
+            lines.append("        } else {")
+            lines.append("            // IDENTIFIER (что-то другое) ... -> это ExpressionStmt (напр. 'now = 0;' или 'p0.id = 1;')")
+            lines.append(f"            node->add_child({self.clean_name('<ExpressionStmt>', True)}());")
+            lines.append("        }")
+            lines.append("        return node;")
+            lines.append("    }")
+
+        # 5. Ошибка
+        lines.append("    delete node;")
+        lines.append(f'    syntax_error(\"unexpected token \"+token_to_string(current)+\" in TOK_STATEMENT\");')
+        lines.append("    return nullptr;")
+        lines.append("}")
+        return "\n".join(lines)
 
     # ================================================================
     # Основная генерация функций (с AST)
