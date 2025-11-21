@@ -37,13 +37,18 @@ std::string AstNode::to_string() const {
 // Терминальный узел
 // =============================================================
 
-TerminalNode::TerminalNode(parser::TokenType tt, const std::string& val, const std::string& n)
-    : AstNode(NodeType::TERMINAL), token_type(tt), value(val), name(n) {}
+// *** ИСПРАВЛЕНИЕ: Реализация конструктора с line/col ***
+TerminalNode::TerminalNode(parser::TokenType tt, const std::string& val, const std::string& n, int l, int c)
+    : AstNode(NodeType::TERMINAL), token_type(tt), value(val), name(n) {
+    line = l;
+    col = c;
+}
 
 void TerminalNode::print(int depth) const {
     std::cout << std::string(depth * 2, ' ')
               << "Terminal: " << parser::token_to_string(token_type)
-              << " = '" << value << "'" << std::endl;
+              << " = '" << value << "' "
+              << "(" << line << ":" << col << ")" << std::endl;
 }
 
 std::string TerminalNode::to_string() const {
