@@ -62,6 +62,7 @@ add_executable(my_lang_ftl_prak
         out/ast_utils.cpp
         out/ast.cpp
         out/poliz.cpp
+        out/poliz.hpp
 )
 
 add_dependencies(my_lang_ftl_prak generate_parser_lexer copy_test_program)
