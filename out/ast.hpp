@@ -107,7 +107,8 @@ public:
     std::string value;
     std::string name;
 
-    TerminalNode(parser::TokenType tt, const std::string& val, const std::string& n);
+    // *** ИСПРАВЛЕНИЕ: Добавлены line и col в конструктор ***
+    TerminalNode(parser::TokenType tt, const std::string& val, const std::string& n, int l, int c);
     void print(int depth = 0) const override;
     std::string to_string() const override;
 };

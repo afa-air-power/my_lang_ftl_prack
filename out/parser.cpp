@@ -4,6 +4,9 @@
 #include <fstream>
 #include "ast_utils.hpp"
 
+// *** ВАЖНОЕ ИСПРАВЛЕНИЕ: Глобальное определение для линковки с ast_utils.cpp ***
+std::string current_file_path ="test_program.txt";
+
 namespace parser {
 static lexer::Lexer* current_lexer = nullptr;
 TokenType current = TokenType::END_OF_FILE;
@@ -13,7 +16,7 @@ lexer::Token current_token(TokenType::END_OF_FILE, "", "", 0, 0);
 TokenType peek = TokenType::END_OF_FILE;
 lexer::Token peek_token(TokenType::END_OF_FILE, "", "", 0, 0);
 
-static std::string current_file_path;
+// current_file_path теперь глобальная выше
 static std::vector<std::string> call_stack;
 
 // *** ИЗМЕНЕНО: gc() теперь сдвигает peek в current ***
@@ -160,7 +163,7 @@ ast::AstNode* TOK_ID() {
             delete node;
             syntax_error("expected IDENTIFIER in TOK_ID");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_idrest = TOK_IDREST();
         node->add_child(child_tok_idrest);
@@ -182,7 +185,7 @@ ast::AstNode* TOK_IDREST() {
             delete node;
             syntax_error("expected TOK_DOT in TOK_IDREST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_id = TOK_ID();
         node->add_child(child_tok_id);
@@ -249,7 +252,7 @@ ast::AstNode* TOK_DECLSUFFIX() {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_DECLSUFFIX");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_paramlist = TOK_PARAMLIST();
         node->add_child(child_tok_paramlist);
@@ -257,7 +260,7 @@ ast::AstNode* TOK_DECLSUFFIX() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_DECLSUFFIX");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_compoundstmt = TOK_COMPOUNDSTMT();
         node->add_child(child_tok_compoundstmt);
@@ -270,7 +273,7 @@ ast::AstNode* TOK_DECLSUFFIX() {
             delete node;
             syntax_error("expected TOK_SEMICOLON in TOK_DECLSUFFIX");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -290,7 +293,7 @@ ast::AstNode* TOK_CLASSDECL() {
             delete node;
             syntax_error("expected TOK_CLASS in TOK_CLASSDECL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_id = TOK_ID();
         node->add_child(child_tok_id);
@@ -298,7 +301,7 @@ ast::AstNode* TOK_CLASSDECL() {
             delete node;
             syntax_error("expected TOK_LBRACE in TOK_CLASSDECL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_memberlist = TOK_MEMBERLIST();
         node->add_child(child_tok_memberlist);
@@ -306,13 +309,13 @@ ast::AstNode* TOK_CLASSDECL() {
             delete node;
             syntax_error("expected TOK_RBRACE in TOK_CLASSDECL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         if (current != TokenType::TOK_SEMICOLON) {
             delete node;
             syntax_error("expected TOK_SEMICOLON in TOK_CLASSDECL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -371,7 +374,7 @@ ast::AstNode* TOK_MEMBERSUFFIX() {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_MEMBERSUFFIX");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_paramlist = TOK_PARAMLIST();
         node->add_child(child_tok_paramlist);
@@ -379,7 +382,7 @@ ast::AstNode* TOK_MEMBERSUFFIX() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_MEMBERSUFFIX");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_compoundstmt = TOK_COMPOUNDSTMT();
         node->add_child(child_tok_compoundstmt);
@@ -390,7 +393,7 @@ ast::AstNode* TOK_MEMBERSUFFIX() {
             delete node;
             syntax_error("expected TOK_SEMICOLON in TOK_MEMBERSUFFIX");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -410,7 +413,7 @@ ast::AstNode* TOK_VARDECLREST() {
             delete node;
             syntax_error("expected TOK_EQUAL in TOK_VARDECLREST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -433,7 +436,7 @@ ast::AstNode* TOK_TYPE() {
             delete node;
             syntax_error("expected TOK_INT in TOK_TYPE");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -442,7 +445,7 @@ ast::AstNode* TOK_TYPE() {
             delete node;
             syntax_error("expected TOK_FLOAT in TOK_TYPE");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -451,7 +454,7 @@ ast::AstNode* TOK_TYPE() {
             delete node;
             syntax_error("expected TOK_DOUBLE in TOK_TYPE");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -460,7 +463,7 @@ ast::AstNode* TOK_TYPE() {
             delete node;
             syntax_error("expected TOK_STRING in TOK_TYPE");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -474,13 +477,13 @@ ast::AstNode* TOK_TYPE() {
             delete node;
             syntax_error("expected TOK_VECTOR in TOK_TYPE");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         if (current != TokenType::TOK_LT) {
             delete node;
             syntax_error("expected TOK_LT in TOK_TYPE");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_type = TOK_TYPE();
         node->add_child(child_tok_type);
@@ -488,7 +491,7 @@ ast::AstNode* TOK_TYPE() {
             delete node;
             syntax_error("expected TOK_GT in TOK_TYPE");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -527,7 +530,7 @@ ast::AstNode* TOK_PARAMLISTREST() {
             delete node;
             syntax_error("expected TOK_COMMA in TOK_PARAMLISTREST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_param = TOK_PARAM();
         node->add_child(child_tok_param);
@@ -570,7 +573,7 @@ ast::AstNode* TOK_COMPOUNDSTMT() {
             delete node;
             syntax_error("expected TOK_LBRACE in TOK_COMPOUNDSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_stmtlist = TOK_STMTLIST();
         node->add_child(child_tok_stmtlist);
@@ -578,7 +581,7 @@ ast::AstNode* TOK_COMPOUNDSTMT() {
             delete node;
             syntax_error("expected TOK_RBRACE in TOK_COMPOUNDSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -678,13 +681,13 @@ ast::AstNode* TOK_FORSTMT() {
             delete node;
             syntax_error("expected TOK_FOR in TOK_FORSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         if (current != TokenType::TOK_LPAREN) {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_FORSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -692,7 +695,7 @@ ast::AstNode* TOK_FORSTMT() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_FORSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_statement = TOK_STATEMENT();
         node->add_child(child_tok_statement);
@@ -714,7 +717,7 @@ ast::AstNode* TOK_AFTERSTMT() {
             delete node;
             syntax_error("expected TOK_AFTER in TOK_AFTERSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -765,7 +768,7 @@ ast::AstNode* TOK_LOCALVARDECL() {
             delete node;
             syntax_error("expected TOK_SEMICOLON in TOK_LOCALVARDECL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -785,13 +788,13 @@ ast::AstNode* TOK_IFSTMT() {
             delete node;
             syntax_error("expected TOK_IF in TOK_IFSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         if (current != TokenType::TOK_LPAREN) {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_IFSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -799,7 +802,7 @@ ast::AstNode* TOK_IFSTMT() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_IFSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_statement = TOK_STATEMENT();
         node->add_child(child_tok_statement);
@@ -823,7 +826,7 @@ ast::AstNode* TOK_ELSEPART() {
             delete node;
             syntax_error("expected TOK_ELSE in TOK_ELSEPART");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_statement = TOK_STATEMENT();
         node->add_child(child_tok_statement);
@@ -846,13 +849,13 @@ ast::AstNode* TOK_WHILESTMT() {
             delete node;
             syntax_error("expected TOK_WHILE in TOK_WHILESTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         if (current != TokenType::TOK_LPAREN) {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_WHILESTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -860,7 +863,7 @@ ast::AstNode* TOK_WHILESTMT() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_WHILESTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_statement = TOK_STATEMENT();
         node->add_child(child_tok_statement);
@@ -882,7 +885,7 @@ ast::AstNode* TOK_RETURNSTMT() {
             delete node;
             syntax_error("expected TOK_RETURN in TOK_RETURNSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -890,7 +893,7 @@ ast::AstNode* TOK_RETURNSTMT() {
             delete node;
             syntax_error("expected TOK_SEMICOLON in TOK_RETURNSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -912,7 +915,7 @@ ast::AstNode* TOK_EXPRESSIONSTMT() {
             delete node;
             syntax_error("expected TOK_SEMICOLON in TOK_EXPRESSIONSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -966,7 +969,7 @@ ast::AstNode* TOK_EXPR01REST() {
             delete node;
             syntax_error("expected TOK_COMMA in TOK_EXPR01REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr02 = TOK_EXPR02();
         node->add_child(child_tok_expr02);
@@ -1028,7 +1031,7 @@ ast::AstNode* TOK_EQUAL() {
             delete node;
             syntax_error("expected TOK_EQUAL in TOK_EQUAL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1053,7 +1056,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_PLUSEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1062,7 +1065,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_MINUSEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1071,7 +1074,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_STAREQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1080,7 +1083,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_SLASHEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1089,7 +1092,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_PERCENTEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1098,7 +1101,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_LSHIFTEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1107,7 +1110,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_RSHIFTEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1116,7 +1119,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_AMPEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1125,7 +1128,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected None in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1134,7 +1137,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_EQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1143,7 +1146,7 @@ ast::AstNode* TOK_ASSIGNOP() {
             delete node;
             syntax_error("expected TOK_CARETEQUAL in TOK_ASSIGNOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1181,7 +1184,7 @@ ast::AstNode* TOK_EXPR03REST() {
             delete node;
             syntax_error("expected TOK_QMARK in TOK_EXPR03REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr02 = TOK_EXPR02();
         node->add_child(child_tok_expr02);
@@ -1189,7 +1192,7 @@ ast::AstNode* TOK_EXPR03REST() {
             delete node;
             syntax_error("expected TOK_COLON in TOK_EXPR03REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr03 = TOK_EXPR03();
         node->add_child(child_tok_expr03);
@@ -1230,7 +1233,7 @@ ast::AstNode* TOK_EXPR04REST() {
             delete node;
             syntax_error("expected TOK_OR in TOK_EXPR04REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr05 = TOK_EXPR05();
         node->add_child(child_tok_expr05);
@@ -1273,7 +1276,7 @@ ast::AstNode* TOK_EXPR05REST() {
             delete node;
             syntax_error("expected TOK_ANDAND in TOK_EXPR05REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr06 = TOK_EXPR06();
         node->add_child(child_tok_expr06);
@@ -1316,7 +1319,7 @@ ast::AstNode* TOK_EXPR06REST() {
             delete node;
             syntax_error("expected None in TOK_EXPR06REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1326,7 +1329,7 @@ ast::AstNode* TOK_EXPR06REST() {
             delete node;
             syntax_error("expected None in TOK_EXPR06REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr07 = TOK_EXPR07();
         node->add_child(child_tok_expr07);
@@ -1369,7 +1372,7 @@ ast::AstNode* TOK_EXPR07REST() {
             delete node;
             syntax_error("expected TOK_CARET in TOK_EXPR07REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr08 = TOK_EXPR08();
         node->add_child(child_tok_expr08);
@@ -1412,7 +1415,7 @@ ast::AstNode* TOK_EXPR08REST() {
             delete node;
             syntax_error("expected TOK_AMP in TOK_EXPR08REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr09 = TOK_EXPR09();
         node->add_child(child_tok_expr09);
@@ -1455,7 +1458,7 @@ ast::AstNode* TOK_EXPR09REST() {
             delete node;
             syntax_error("expected TOK_EQEQ in TOK_EXPR09REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr10 = TOK_EXPR10();
         node->add_child(child_tok_expr10);
@@ -1468,7 +1471,7 @@ ast::AstNode* TOK_EXPR09REST() {
             delete node;
             syntax_error("expected TOK_NEQ in TOK_EXPR09REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr10 = TOK_EXPR10();
         node->add_child(child_tok_expr10);
@@ -1511,7 +1514,7 @@ ast::AstNode* TOK_EXPR10REST() {
             delete node;
             syntax_error("expected TOK_LT in TOK_EXPR10REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr11 = TOK_EXPR11();
         node->add_child(child_tok_expr11);
@@ -1524,7 +1527,7 @@ ast::AstNode* TOK_EXPR10REST() {
             delete node;
             syntax_error("expected TOK_GT in TOK_EXPR10REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr11 = TOK_EXPR11();
         node->add_child(child_tok_expr11);
@@ -1537,7 +1540,7 @@ ast::AstNode* TOK_EXPR10REST() {
             delete node;
             syntax_error("expected TOK_LEQ in TOK_EXPR10REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr11 = TOK_EXPR11();
         node->add_child(child_tok_expr11);
@@ -1550,7 +1553,7 @@ ast::AstNode* TOK_EXPR10REST() {
             delete node;
             syntax_error("expected TOK_GEQ in TOK_EXPR10REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr11 = TOK_EXPR11();
         node->add_child(child_tok_expr11);
@@ -1593,7 +1596,7 @@ ast::AstNode* TOK_EXPR11REST() {
             delete node;
             syntax_error("expected TOK_LSHIFT in TOK_EXPR11REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr12 = TOK_EXPR12();
         node->add_child(child_tok_expr12);
@@ -1606,7 +1609,7 @@ ast::AstNode* TOK_EXPR11REST() {
             delete node;
             syntax_error("expected TOK_RSHIFT in TOK_EXPR11REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr12 = TOK_EXPR12();
         node->add_child(child_tok_expr12);
@@ -1649,7 +1652,7 @@ ast::AstNode* TOK_EXPR12REST() {
             delete node;
             syntax_error("expected TOK_PLUS in TOK_EXPR12REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr13 = TOK_EXPR13();
         node->add_child(child_tok_expr13);
@@ -1662,7 +1665,7 @@ ast::AstNode* TOK_EXPR12REST() {
             delete node;
             syntax_error("expected TOK_MINUS in TOK_EXPR12REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr13 = TOK_EXPR13();
         node->add_child(child_tok_expr13);
@@ -1705,7 +1708,7 @@ ast::AstNode* TOK_EXPR13REST() {
             delete node;
             syntax_error("expected TOK_STAR in TOK_EXPR13REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr14 = TOK_EXPR14();
         node->add_child(child_tok_expr14);
@@ -1718,7 +1721,7 @@ ast::AstNode* TOK_EXPR13REST() {
             delete node;
             syntax_error("expected TOK_SLASH in TOK_EXPR13REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr14 = TOK_EXPR14();
         node->add_child(child_tok_expr14);
@@ -1731,7 +1734,7 @@ ast::AstNode* TOK_EXPR13REST() {
             delete node;
             syntax_error("expected TOK_PERCENT in TOK_EXPR13REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expr14 = TOK_EXPR14();
         node->add_child(child_tok_expr14);
@@ -1779,7 +1782,7 @@ ast::AstNode* TOK_UNARYOP() {
             delete node;
             syntax_error("expected TOK_EXCL in TOK_UNARYOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1788,7 +1791,7 @@ ast::AstNode* TOK_UNARYOP() {
             delete node;
             syntax_error("expected TOK_MINUS in TOK_UNARYOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1797,7 +1800,7 @@ ast::AstNode* TOK_UNARYOP() {
             delete node;
             syntax_error("expected TOK_PLUSPLUS in TOK_UNARYOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1806,7 +1809,7 @@ ast::AstNode* TOK_UNARYOP() {
             delete node;
             syntax_error("expected TOK_MINUSMINUS in TOK_UNARYOP");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1844,7 +1847,7 @@ ast::AstNode* TOK_EXPR15REST() {
             delete node;
             syntax_error("expected TOK_PLUSPLUS in TOK_EXPR15REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1853,7 +1856,7 @@ ast::AstNode* TOK_EXPR15REST() {
             delete node;
             syntax_error("expected TOK_MINUSMINUS in TOK_EXPR15REST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1902,7 +1905,7 @@ ast::AstNode* TOK_ATOM() {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_ATOM");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -1910,7 +1913,7 @@ ast::AstNode* TOK_ATOM() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_ATOM");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1954,7 +1957,7 @@ ast::AstNode* TOK_POSTFIX_ITEM() {
             delete node;
             syntax_error("expected TOK_DOT in TOK_POSTFIX_ITEM");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_id = TOK_ID();
         node->add_child(child_tok_id);
@@ -1965,7 +1968,7 @@ ast::AstNode* TOK_POSTFIX_ITEM() {
             delete node;
             syntax_error("expected TOK_LBRACKET in TOK_POSTFIX_ITEM");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -1973,7 +1976,7 @@ ast::AstNode* TOK_POSTFIX_ITEM() {
             delete node;
             syntax_error("expected TOK_RBRACKET in TOK_POSTFIX_ITEM");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -1982,7 +1985,7 @@ ast::AstNode* TOK_POSTFIX_ITEM() {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_POSTFIX_ITEM");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_arglist = TOK_ARGLIST();
         node->add_child(child_tok_arglist);
@@ -1990,7 +1993,7 @@ ast::AstNode* TOK_POSTFIX_ITEM() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_POSTFIX_ITEM");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -2010,13 +2013,13 @@ ast::AstNode* TOK_INO() {
             delete node;
             syntax_error("expected TOK_PRINT in TOK_INO");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         if (current != TokenType::TOK_LPAREN) {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_INO");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_arglist = TOK_ARGLIST();
         node->add_child(child_tok_arglist);
@@ -2024,7 +2027,7 @@ ast::AstNode* TOK_INO() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_INO");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -2033,13 +2036,13 @@ ast::AstNode* TOK_INO() {
             delete node;
             syntax_error("expected TOK_INPUT in TOK_INO");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         if (current != TokenType::TOK_LPAREN) {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_INO");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_arglist = TOK_ARGLIST();
         node->add_child(child_tok_arglist);
@@ -2047,7 +2050,7 @@ ast::AstNode* TOK_INO() {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_INO");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -2086,7 +2089,7 @@ ast::AstNode* TOK_ARGLISTREST() {
             delete node;
             syntax_error("expected TOK_COMMA in TOK_ARGLISTREST");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
@@ -2111,7 +2114,7 @@ ast::AstNode* TOK_LITERAL() {
             delete node;
             syntax_error("expected NUMBER in TOK_LITERAL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
@@ -2120,7 +2123,7 @@ ast::AstNode* TOK_LITERAL() {
             delete node;
             syntax_error("expected STRING in TOK_LITERAL");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
         gc();
         return node;
     }
