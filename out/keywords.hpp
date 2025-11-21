@@ -15,6 +15,7 @@ enum class TokenType {
     SYMBOL,
 
     None,
+    TOK_AFTER,
     TOK_AMP,
     TOK_AMPEQUAL,
     TOK_ANDAND,
@@ -31,12 +32,14 @@ enum class TokenType {
     TOK_EXCL,
     TOK_FLOAT,
     TOK_FOR,
+    TOK_GEQ,
     TOK_GT,
     TOK_IF,
     TOK_INPUT,
     TOK_INT,
     TOK_LBRACE,
     TOK_LBRACKET,
+    TOK_LEQ,
     TOK_LPAREN,
     TOK_LSHIFT,
     TOK_LSHIFTEQUAL,
@@ -44,6 +47,7 @@ enum class TokenType {
     TOK_MINUS,
     TOK_MINUSEQUAL,
     TOK_MINUSMINUS,
+    TOK_NEQ,
     TOK_OR,
     TOK_PERCENT,
     TOK_PERCENTEQUAL,
@@ -66,7 +70,6 @@ enum class TokenType {
     TOK_STRING,
     TOK_VECTOR,
     TOK_WHILE,
-    TOK__EXPRESSION_,
     END_OF_FILE
 };
 
@@ -78,6 +81,7 @@ inline std::string token_to_string(TokenType t) {
         case TokenType::STRING: return "STRING";
         case TokenType::SYMBOL: return "SYMBOL";
         case TokenType::None: return "None";
+        case TokenType::TOK_AFTER: return "TOK_AFTER";
         case TokenType::TOK_AMP: return "TOK_AMP";
         case TokenType::TOK_AMPEQUAL: return "TOK_AMPEQUAL";
         case TokenType::TOK_ANDAND: return "TOK_ANDAND";
@@ -94,12 +98,14 @@ inline std::string token_to_string(TokenType t) {
         case TokenType::TOK_EXCL: return "TOK_EXCL";
         case TokenType::TOK_FLOAT: return "TOK_FLOAT";
         case TokenType::TOK_FOR: return "TOK_FOR";
+        case TokenType::TOK_GEQ: return "TOK_GEQ";
         case TokenType::TOK_GT: return "TOK_GT";
         case TokenType::TOK_IF: return "TOK_IF";
         case TokenType::TOK_INPUT: return "TOK_INPUT";
         case TokenType::TOK_INT: return "TOK_INT";
         case TokenType::TOK_LBRACE: return "TOK_LBRACE";
         case TokenType::TOK_LBRACKET: return "TOK_LBRACKET";
+        case TokenType::TOK_LEQ: return "TOK_LEQ";
         case TokenType::TOK_LPAREN: return "TOK_LPAREN";
         case TokenType::TOK_LSHIFT: return "TOK_LSHIFT";
         case TokenType::TOK_LSHIFTEQUAL: return "TOK_LSHIFTEQUAL";
@@ -107,6 +113,7 @@ inline std::string token_to_string(TokenType t) {
         case TokenType::TOK_MINUS: return "TOK_MINUS";
         case TokenType::TOK_MINUSEQUAL: return "TOK_MINUSEQUAL";
         case TokenType::TOK_MINUSMINUS: return "TOK_MINUSMINUS";
+        case TokenType::TOK_NEQ: return "TOK_NEQ";
         case TokenType::TOK_OR: return "TOK_OR";
         case TokenType::TOK_PERCENT: return "TOK_PERCENT";
         case TokenType::TOK_PERCENTEQUAL: return "TOK_PERCENTEQUAL";
@@ -129,7 +136,6 @@ inline std::string token_to_string(TokenType t) {
         case TokenType::TOK_STRING: return "TOK_STRING";
         case TokenType::TOK_VECTOR: return "TOK_VECTOR";
         case TokenType::TOK_WHILE: return "TOK_WHILE";
-        case TokenType::TOK__EXPRESSION_: return "TOK__EXPRESSION_";
         case TokenType::END_OF_FILE: return "EOF";
     } return "?"; }
 
