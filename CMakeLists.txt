@@ -38,7 +38,11 @@ file(COPY ${CMAKE_SOURCE_DIR}/test_program.txt DESTINATION ${CMAKE_BINARY_DIR})
 # ============================================================
 add_executable(my_lang_ftl_prak
         main.cpp
-        out/parser.cpp    # generated file; generate_parser_lexer target will create it before build
+        out/parser.cpp
+        out/ast_utils.cpp
+        out/ast.cpp
+        out/poliz.cpp
+
 )
 
 # ensure the generation target runs before building the executable
