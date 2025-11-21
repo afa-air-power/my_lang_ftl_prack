@@ -168,6 +168,18 @@ std::string TOK_FORSTMTNode::to_string() const {
     return "TOK_FORSTMT";
 }
 
+TOK_AFTERSTMTNode::TOK_AFTERSTMTNode() : AstNode(NodeType::TOK_AFTERSTMT) {}
+
+std::string TOK_AFTERSTMTNode::to_string() const {
+    return "TOK_AFTERSTMT";
+}
+
+TOK_LOOPSTMTNode::TOK_LOOPSTMTNode() : AstNode(NodeType::TOK_LOOPSTMT) {}
+
+std::string TOK_LOOPSTMTNode::to_string() const {
+    return "TOK_LOOPSTMT";
+}
+
 TOK_LOCALVARDECLNode::TOK_LOCALVARDECLNode() : AstNode(NodeType::TOK_LOCALVARDECL) {}
 
 std::string TOK_LOCALVARDECLNode::to_string() const {

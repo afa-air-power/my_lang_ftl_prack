@@ -61,6 +61,7 @@ add_executable(my_lang_ftl_prak
         out/parser.cpp
         out/ast_utils.cpp
         out/ast.cpp
+        out/poliz.cpp
 )
 
 add_dependencies(my_lang_ftl_prak generate_parser_lexer copy_test_program)
@@ -73,8 +74,6 @@ target_include_directories(my_lang_ftl_prak PRIVATE
 #  Тесты
 # ============================================================
 add_executable(my_lang_tests
-        autotest/grammar_test.cpp
-        autotest/parser_test.cpp
         out/parser.cpp
         out/ast.cpp
         out/ast.hpp

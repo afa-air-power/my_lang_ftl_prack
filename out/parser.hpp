@@ -39,6 +39,8 @@ ast::AstNode* TOK_COMPOUNDSTMT();
 ast::AstNode* TOK_STMTLIST();
 ast::AstNode* TOK_STATEMENT();
 ast::AstNode* TOK_FORSTMT();
+ast::AstNode* TOK_AFTERSTMT();
+ast::AstNode* TOK_LOOPSTMT();
 ast::AstNode* TOK_LOCALVARDECL();
 ast::AstNode* TOK_IFSTMT();
 ast::AstNode* TOK_ELSEPART();

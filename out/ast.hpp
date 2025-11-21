@@ -31,6 +31,8 @@ enum class NodeType {
     TOK_STMTLIST,
     TOK_STATEMENT,
     TOK_FORSTMT,
+    TOK_AFTERSTMT,
+    TOK_LOOPSTMT,
     TOK_LOCALVARDECL,
     TOK_IFSTMT,
     TOK_ELSEPART,
@@ -298,6 +300,7 @@ public:
     AstNode* tok_expressionstmt;
     AstNode* tok_compoundstmt;
     AstNode* tok_forstmt;
+    AstNode* tok_afterstmt;
 
     TOK_STATEMENTNode();
     std::string to_string() const override;
@@ -315,6 +318,25 @@ public:
     std::string to_string() const override;
 };
 
+class TOK_AFTERSTMTNode : public AstNode {
+public:
+    AstNode* tok_after;
+    AstNode* tok_expression;
+    AstNode* tok_loopstmt;
+
+    TOK_AFTERSTMTNode();
+    std::string to_string() const override;
+};
+
+class TOK_LOOPSTMTNode : public AstNode {
+public:
+    AstNode* tok_whilestmt;
+    AstNode* tok_forstmt;
+
+    TOK_LOOPSTMTNode();
+    std::string to_string() const override;
+};
+
 class TOK_LOCALVARDECLNode : public AstNode {
 public:
     AstNode* tok_type;
@@ -328,12 +350,11 @@ public:
 
 class TOK_IFSTMTNode : public AstNode {
 public:
-    std::vector<AstNode*> tok_if_list;
-    std::vector<AstNode*> tok_lparen_list;
-    std::vector<AstNode*> tok__expression__list;
-    std::vector<AstNode*> tok_expression_list;
-    std::vector<AstNode*> tok_rparen_list;
-    std::vector<AstNode*> tok_statement_list;
+    AstNode* tok_if;
+    AstNode* tok_lparen;
+    AstNode* tok_expression;
+    AstNode* tok_rparen;
+    AstNode* tok_statement;
     AstNode* tok_elsepart;
 
     TOK_IFSTMTNode();
@@ -466,7 +487,6 @@ public:
     AstNode* tok_expr02;
     AstNode* tok_colon;
     AstNode* tok_expr03;
-    AstNode* tok_id;
 
     TOK_EXPR03RESTNode();
     std::string to_string() const override;
@@ -521,6 +541,7 @@ public:
 
 class TOK_EXPR06RESTNode : public AstNode {
 public:
+    std::vector<AstNode*> none_list;
     AstNode* tok_expr07;
     AstNode* tok_expr06rest;
 
@@ -578,8 +599,9 @@ public:
 class TOK_EXPR09RESTNode : public AstNode {
 public:
     AstNode* tok_eqeq;
-    AstNode* tok_expr10;
-    AstNode* tok_expr09rest;
+    std::vector<AstNode*> tok_expr10_list;
+    std::vector<AstNode*> tok_expr09rest_list;
+    AstNode* tok_neq;
 
     TOK_EXPR09RESTNode();
     std::string to_string() const override;
@@ -600,6 +622,8 @@ public:
     std::vector<AstNode*> tok_expr11_list;
     std::vector<AstNode*> tok_expr10rest_list;
     AstNode* tok_gt;
+    AstNode* tok_leq;
+    AstNode* tok_geq;
 
     TOK_EXPR10RESTNode();
     std::string to_string() const override;

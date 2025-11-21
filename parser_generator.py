@@ -193,8 +193,6 @@ class CppRecursiveDescentGen:
         self._write_keywords_hpp()
         self._write_ast_hpp()
         self._write_ast_cpp()
-        self._write_ast_utils_hpp()
-        self._write_ast_utils_cpp()
         self._write_parser_hpp()
         self._write_parser_cpp()
         print("Генерация завершена: parser.cpp/hpp, ast.cpp/hpp, keywords.hpp и ast_utils созданы.")

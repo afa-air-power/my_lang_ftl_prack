@@ -593,7 +593,7 @@ ast::AstNode* TOK_STMTLIST() {
     node->line = current_token.line;
     node->col = current_token.col;
 
-    if (current == TokenType::IDENTIFIER || current == TokenType::NUMBER || current == TokenType::STRING || current == TokenType::TOK_DOUBLE || current == TokenType::TOK_EXCL || current == TokenType::TOK_FLOAT || current == TokenType::TOK_FOR || current == TokenType::TOK_IF || current == TokenType::TOK_INPUT || current == TokenType::TOK_INT || current == TokenType::TOK_LBRACE || current == TokenType::TOK_LPAREN || current == TokenType::TOK_MINUS || current == TokenType::TOK_MINUSMINUS || current == TokenType::TOK_PLUSPLUS || current == TokenType::TOK_PRINT || current == TokenType::TOK_RETURN || current == TokenType::TOK_STRING || current == TokenType::TOK_VECTOR || current == TokenType::TOK_WHILE) {
+    if (current == TokenType::IDENTIFIER || current == TokenType::NUMBER || current == TokenType::STRING || current == TokenType::TOK_AFTER || current == TokenType::TOK_DOUBLE || current == TokenType::TOK_EXCL || current == TokenType::TOK_FLOAT || current == TokenType::TOK_FOR || current == TokenType::TOK_IF || current == TokenType::TOK_INPUT || current == TokenType::TOK_INT || current == TokenType::TOK_LBRACE || current == TokenType::TOK_LPAREN || current == TokenType::TOK_MINUS || current == TokenType::TOK_MINUSMINUS || current == TokenType::TOK_PLUSPLUS || current == TokenType::TOK_PRINT || current == TokenType::TOK_RETURN || current == TokenType::TOK_STRING || current == TokenType::TOK_VECTOR || current == TokenType::TOK_WHILE) {
         ast::AstNode* child_tok_statement = TOK_STATEMENT();
         node->add_child(child_tok_statement);
         ast::AstNode* child_tok_stmtlist = TOK_STMTLIST();
@@ -633,6 +633,10 @@ ast::AstNode* TOK_STATEMENT() {
     }
     if (current == TokenType::TOK_FOR) {
         node->add_child(TOK_FORSTMT());
+        return node;
+    }
+    if (current == TokenType::TOK_AFTER) {
+        node->add_child(TOK_AFTERSTMT());
         return node;
     }
     if (current == TokenType::TOK_DOUBLE || current == TokenType::TOK_FLOAT || current == TokenType::TOK_INT || current == TokenType::TOK_STRING || current == TokenType::TOK_VECTOR) {
@@ -699,6 +703,51 @@ ast::AstNode* TOK_FORSTMT() {
     return nullptr;
 }
 
+ast::AstNode* TOK_AFTERSTMT() {
+    CallContext ctx("TOK_AFTERSTMT");
+    ast::TOK_AFTERSTMTNode* node = new ast::TOK_AFTERSTMTNode();
+    node->line = current_token.line;
+    node->col = current_token.col;
+
+    if (current == TokenType::TOK_AFTER) {
+        if (current != TokenType::TOK_AFTER) {
+            delete node;
+            syntax_error("expected TOK_AFTER in TOK_AFTERSTMT");
+        }
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        gc();
+        ast::AstNode* child_tok_expression = TOK_EXPRESSION();
+        node->add_child(child_tok_expression);
+        ast::AstNode* child_tok_loopstmt = TOK_LOOPSTMT();
+        node->add_child(child_tok_loopstmt);
+        return node;
+    }
+    delete node;
+    syntax_error("unexpected token "+token_to_string(current)+" in TOK_AFTERSTMT");
+    return nullptr;
+}
+
+ast::AstNode* TOK_LOOPSTMT() {
+    CallContext ctx("TOK_LOOPSTMT");
+    ast::TOK_LOOPSTMTNode* node = new ast::TOK_LOOPSTMTNode();
+    node->line = current_token.line;
+    node->col = current_token.col;
+
+    if (current == TokenType::TOK_WHILE) {
+        ast::AstNode* child_tok_whilestmt = TOK_WHILESTMT();
+        node->add_child(child_tok_whilestmt);
+        return node;
+    }
+    else if (current == TokenType::TOK_FOR) {
+        ast::AstNode* child_tok_forstmt = TOK_FORSTMT();
+        node->add_child(child_tok_forstmt);
+        return node;
+    }
+    delete node;
+    syntax_error("unexpected token "+token_to_string(current)+" in TOK_LOOPSTMT");
+    return nullptr;
+}
+
 ast::AstNode* TOK_LOCALVARDECL() {
     CallContext ctx("TOK_LOCALVARDECL");
     ast::TOK_LOCALVARDECLNode* node = new ast::TOK_LOCALVARDECLNode();
@@ -744,18 +793,6 @@ ast::AstNode* TOK_IFSTMT() {
         }
         node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
         gc();
-        if (current != TokenType::TOK__EXPRESSION_) {
-            delete node;
-            syntax_error("expected TOK__EXPRESSION_ in TOK_IFSTMT");
-        }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
-        gc();
-        if (current != TokenType::TOK__EXPRESSION_) {
-            delete node;
-            syntax_error("expected TOK__EXPRESSION_ in TOK_IFSTMT");
-        }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
-        gc();
         ast::AstNode* child_tok_expression = TOK_EXPRESSION();
         node->add_child(child_tok_expression);
         if (current != TokenType::TOK_RPAREN) {
@@ -768,31 +805,6 @@ ast::AstNode* TOK_IFSTMT() {
         node->add_child(child_tok_statement);
         ast::AstNode* child_tok_elsepart = TOK_ELSEPART();
         node->add_child(child_tok_elsepart);
-        return node;
-    }
-    else if (current == TokenType::TOK_IF) {
-        if (current != TokenType::TOK_IF) {
-            delete node;
-            syntax_error("expected TOK_IF in TOK_IFSTMT");
-        }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
-        gc();
-        if (current != TokenType::TOK_LPAREN) {
-            delete node;
-            syntax_error("expected TOK_LPAREN in TOK_IFSTMT");
-        }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
-        gc();
-        ast::AstNode* child_tok_expression = TOK_EXPRESSION();
-        node->add_child(child_tok_expression);
-        if (current != TokenType::TOK_RPAREN) {
-            delete node;
-            syntax_error("expected TOK_RPAREN in TOK_IFSTMT");
-        }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
-        gc();
-        ast::AstNode* child_tok_statement = TOK_STATEMENT();
-        node->add_child(child_tok_statement);
         return node;
     }
     delete node;
@@ -1183,11 +1195,6 @@ ast::AstNode* TOK_EXPR03REST() {
         node->add_child(child_tok_expr03);
         return node;
     }
-    else if (current == TokenType::IDENTIFIER) {
-        ast::AstNode* child_tok_id = TOK_ID();
-        node->add_child(child_tok_id);
-        return node;
-    }
     else if (true) { /* ε */ return node; }
     delete node;
     syntax_error("unexpected token "+token_to_string(current)+" in TOK_EXPR03REST");
@@ -1304,7 +1311,23 @@ ast::AstNode* TOK_EXPR06REST() {
     node->line = current_token.line;
     node->col = current_token.col;
 
-    if (current == TokenType::IDENTIFIER || current == TokenType::NUMBER || current == TokenType::STRING || current == TokenType::TOK_EXCL || current == TokenType::TOK_INPUT || current == TokenType::TOK_LPAREN || current == TokenType::TOK_MINUS || current == TokenType::TOK_MINUSMINUS || current == TokenType::TOK_PLUSPLUS || current == TokenType::TOK_PRINT) {
+    if (current == TokenType::None) {
+        if (current != TokenType::None) {
+            delete node;
+            syntax_error("expected None in TOK_EXPR06REST");
+        }
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        gc();
+        return node;
+    }
+    else if (true) { /* ε */ return node; }
+    else if (current == TokenType::None) {
+        if (current != TokenType::None) {
+            delete node;
+            syntax_error("expected None in TOK_EXPR06REST");
+        }
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        gc();
         ast::AstNode* child_tok_expr07 = TOK_EXPR07();
         node->add_child(child_tok_expr07);
         ast::AstNode* child_tok_expr06rest = TOK_EXPR06REST();
@@ -1440,6 +1463,19 @@ ast::AstNode* TOK_EXPR09REST() {
         node->add_child(child_tok_expr09rest);
         return node;
     }
+    else if (current == TokenType::TOK_NEQ) {
+        if (current != TokenType::TOK_NEQ) {
+            delete node;
+            syntax_error("expected TOK_NEQ in TOK_EXPR09REST");
+        }
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        gc();
+        ast::AstNode* child_tok_expr10 = TOK_EXPR10();
+        node->add_child(child_tok_expr10);
+        ast::AstNode* child_tok_expr09rest = TOK_EXPR09REST();
+        node->add_child(child_tok_expr09rest);
+        return node;
+    }
     else if (true) { /* ε */ return node; }
     delete node;
     syntax_error("unexpected token "+token_to_string(current)+" in TOK_EXPR09REST");
@@ -1487,6 +1523,32 @@ ast::AstNode* TOK_EXPR10REST() {
         if (current != TokenType::TOK_GT) {
             delete node;
             syntax_error("expected TOK_GT in TOK_EXPR10REST");
+        }
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        gc();
+        ast::AstNode* child_tok_expr11 = TOK_EXPR11();
+        node->add_child(child_tok_expr11);
+        ast::AstNode* child_tok_expr10rest = TOK_EXPR10REST();
+        node->add_child(child_tok_expr10rest);
+        return node;
+    }
+    else if (current == TokenType::TOK_LEQ) {
+        if (current != TokenType::TOK_LEQ) {
+            delete node;
+            syntax_error("expected TOK_LEQ in TOK_EXPR10REST");
+        }
+        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
+        gc();
+        ast::AstNode* child_tok_expr11 = TOK_EXPR11();
+        node->add_child(child_tok_expr11);
+        ast::AstNode* child_tok_expr10rest = TOK_EXPR10REST();
+        node->add_child(child_tok_expr10rest);
+        return node;
+    }
+    else if (current == TokenType::TOK_GEQ) {
+        if (current != TokenType::TOK_GEQ) {
+            delete node;
+            syntax_error("expected TOK_GEQ in TOK_EXPR10REST");
         }
         node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name));
         gc();
