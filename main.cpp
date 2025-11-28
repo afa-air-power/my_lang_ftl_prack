@@ -9,8 +9,8 @@
 
 extern std::string current_file_path; // Глобальная переменная из ast_utils.cpp
 
-int main(int argc, char** argv) {
-    std::string path = "test_program.txt";  // файл для теста
+int main(int argc, char **argv) {
+    std::string path = "test_program.txt"; // файл для теста
     if (argc > 1)
         path = argv[1];
 
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     lexer::Lexer lex(source, "../out/system_reserved_identifiers.txt");
 
     // Запускаем синтаксический анализ
-    ast::AstNode* root = nullptr;
+    ast::AstNode *root = nullptr;
     try {
         // Установка имени текущего файла для сообщений об ошибках
         current_file_path = path;
@@ -56,13 +56,11 @@ int main(int argc, char** argv) {
             poliz_generator.generate(root);
             poliz_generator.print();
             std::cout << "✅ POLIZ generation complete.\n";
-
         } else {
             std::cerr << "❌ Semantic checks failed. Stopping compilation.\n";
             // В случае ошибки root будет удален ниже, если не null
         }
-
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "❌ Exception during compilation: " << e.what() << std::endl;
         // Продолжаем выполнение, чтобы удалить root, если он был создан
     }
