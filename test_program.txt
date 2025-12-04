@@ -60,7 +60,6 @@ class human {
 
 } ; // end class human
 
-int IHYFIR87RI7U;
 
 
 // -------------------------------
