@@ -21,7 +21,7 @@ extern std::string current_file_path;
 
 namespace ast {
     // =============================================================
-    // Вспомогательные структуры и утилиты (без изменений)
+    // Вспомогательные структуры и утилиты
     // =============================================================
 
     // ----------------- Печать -----------------
@@ -139,6 +139,28 @@ namespace ast {
             ss << current_file_path << ":" << node->line << ":" << node->col << " warning: " << msg;
             messages.push_back(ss.str());
         }
+
+        // Проверка совместимости типов для присваивания
+        bool is_assignable(const std::string &target_type, const std::string &source_type) const {
+            if (target_type == source_type) return true;
+            if (target_type == "double" && (source_type == "int" || source_type == "float")) return true;
+            if (target_type == "float" && source_type == "int") return true;
+
+            return false;
+        }
+
+        // Проверка совместимости типов для операций
+        bool are_types_compatible(const std::string &type1, const std::string &type2) const {
+            if (type1 == type2) return true;
+
+            // Разрешенные комбинации для числовых операций
+            if ((type1 == "int" || type1 == "float" || type1 == "double") &&
+                (type2 == "int" || type2 == "float" || type2 == "double")) {
+                return true;
+            }
+
+            return false;
+        }
     };
 
     // ----------------- Вспомогательные функции поиска -----------------
@@ -154,7 +176,6 @@ namespace ast {
         return {};
     }
 
-    // *** НОВАЯ ФУНКЦИЯ: Поиск ID только в узле TOK_ID ***
     static std::string get_id_from_tok_id_child(AstNode* parent) {
         if (!parent) return "";
         for (auto* c : parent->children) {
@@ -225,12 +246,199 @@ namespace ast {
         return false;
     }
 
+    // НОВЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+    static std::string get_function_name_from_call(AstNode* node) {
+        if (!node) return "";
+        for (auto* c : node->children) {
+            if (c->to_string() == "TOK_ID") {
+                return find_first_identifier_in_subtree(c);
+            }
+        }
+        return "";
+    }
+    static std::string infer_expression_type(AstNode *expr, SemanticState &st) {
+        if (!expr) return "";
+        std::string nodename = expr->to_string();
+
+        // 1. Терминальные узлы
+        if (auto *tn = dynamic_cast<TerminalNode *>(expr)) {
+            if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                std::string type = st.get_var_type(tn->value);
+                if (type.empty()) {
+                    // Проверяем, не является ли это вызовом функции
+                    FunctionInfo* finfo = st.get_function_info(tn->value);
+                    if (finfo) {
+                        return finfo->return_type;
+                    }
+                    st.error(expr, "use of undeclared identifier '" + tn->value + "'");
+                }
+                return type.empty() ? "unknown" : type;
+            }
+            if (tn->token_type == parser::TokenType::NUMBER) {
+                if (tn->value.find('.') != std::string::npos) return "double";
+                return "int";
+            }
+            if (tn->token_type == parser::TokenType::STRING) {
+                if (tn->value.size() >= 2 && tn->value.front() == '\'' && tn->value.back() == '\'') {
+                    return "int"; // char
+                }
+                return "string";
+            }
+            if (tn->token_type == parser::TokenType::KEYWORD) {
+                if (tn->value == "true" || tn->value == "false") return "bool";
+            }
+            return "";
+        }
+
+        // 2. Узлы выражений
+        if (nodename.find("EXPR") != std::string::npos || nodename == "TOK_EXPRESSION") {
+            if (expr->children.size() == 1) {
+                return infer_expression_type(expr->children[0], st);
+            } else if (expr->children.size() >= 2) {
+                std::string left_type = infer_expression_type(expr->children[0], st);
+                AstNode* rest = expr->children[1];
+                if (rest->to_string().find("REST") != std::string::npos && rest->children.size() >= 2) {
+                    TerminalNode* op_node = dynamic_cast<TerminalNode*>(rest->children[0]);
+                    std::string op = op_node ? op_node->value : "";
+                    std::string right_type = infer_expression_type(rest->children[1], st);
+
+                    if (op.empty()) return left_type;
+
+                    if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
+                        if (left_type == "string" || right_type == "string") {
+                            if (left_type != right_type) {
+                                st.error(expr, "type mismatch in string operation: " + left_type + " " + op + " " + right_type);
+                                return "unknown";
+                            }
+                            if (op != "+") {
+                                st.error(expr, "invalid operator '" + op + "' for string operands");
+                                return "unknown";
+                            }
+                            return "string";
+                        }
+                        if ((left_type == "int" || left_type == "double" || left_type == "float") &&
+                            (right_type == "int" || right_type == "double" || right_type == "float")) {
+                            if (left_type == "double" || right_type == "double") return "double";
+                            return "int";
+                        }
+                        st.error(expr, "invalid operands to '" + op + "': " + left_type + " and " + right_type);
+                        return "unknown";
+                    } else if (op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=") {
+                        if (left_type != right_type && !st.are_types_compatible(left_type, right_type)) {
+                            st.error(expr, "type mismatch in comparison: " + left_type + " " + op + " " + right_type);
+                            return "unknown";
+                        }
+                        return "bool";
+                    } else if (op == "&&" || op == "||") {
+                        if (left_type != "bool" || right_type != "bool") {
+                            st.error(expr, "logical operators require boolean operands");
+                            return "unknown";
+                        }
+                        return "bool";
+                    }
+                }
+                return left_type;
+            }
+        }
+
+        // 3. Вызов функции
+        if (nodename == "TOK_FUNCCALL") {
+            std::string func_name = get_function_name_from_call(expr);
+            if (!func_name.empty()) {
+                FunctionInfo* finfo = st.get_function_info(func_name);
+                if (finfo) {
+                    return finfo->return_type;
+                }
+                st.error(expr, "undefined function '" + func_name + "'");
+            }
+            return "unknown";
+        }
+
+        // 4. Унарные операции
+        if (nodename == "TOK_UNARYEXPR") {
+            if (expr->children.size() >= 2) {
+                TerminalNode* op_node = dynamic_cast<TerminalNode*>(expr->children[0]);
+                std::string op = op_node ? op_node->value : "";
+                std::string expr_type = infer_expression_type(expr->children[1], st);
+
+                if (op == "!" && expr_type != "bool") {
+                    st.error(expr, "logical NOT requires boolean operand");
+                    return "unknown";
+                }
+                if ((op == "-" || op == "+") && !(expr_type == "int" || expr_type == "double" || expr_type == "float")) {
+                    st.error(expr, "unary " + op + " requires numeric operand");
+                    return "unknown";
+                }
+                return expr_type;
+            }
+        }
+
+        // Рекурсия
+        for (auto* child : expr->children) {
+            std::string child_type = infer_expression_type(child, st);
+            if (!child_type.empty()) return child_type;
+        }
+
+        return "";
+    }
+
+    static std::vector<std::string> collect_argument_types(AstNode* node, SemanticState &st) {
+        std::vector<std::string> result;
+        if (!node) return result;
+
+        std::function<void(AstNode*)> collect_args = [&](AstNode* n) {
+            if (!n) return;
+
+            // Находим узлы выражений-аргументов
+            if (n->to_string().find("EXPR") != std::string::npos ||
+                n->to_string() == "TOK_EXPRESSION" ||
+                n->to_string() == "TOK_LITERAL" ||
+                n->to_string() == "TOK_ATOM") {
+
+                std::string arg_type = infer_expression_type(n, st);
+                if (!arg_type.empty() && arg_type != "unknown") {
+                    result.push_back(arg_type);
+                }
+            }
+
+            for (auto* c : n->children) {
+                collect_args(c);
+            }
+        };
+
+        collect_args(node);
+        return result;
+    }
+
+    static AstNode* find_condition_expression(AstNode* node) {
+        if (!node) return nullptr;
+
+        // Ищем выражение условия в if/while
+        std::queue<AstNode*> q;
+        q.push(node);
+
+        while (!q.empty()) {
+            AstNode* current = q.front();
+            q.pop();
+
+            if (current->to_string().find("EXPR") != std::string::npos ||
+                current->to_string() == "TOK_EXPRESSION") {
+                return current;
+            }
+
+            for (auto* c : current->children) {
+                q.push(c);
+            }
+        }
+
+        return nullptr;
+    }
+
     static void semantic_collect_defs(AstNode *node, SemanticState &st) {
         if (!node) return;
         std::string nodename = node->to_string();
 
         if (nodename == "TOK_CLASSDECL") {
-            // Исправлено: имя класса берем из TOK_ID
             std::string class_name = get_id_from_tok_id_child(node);
 
             if (!class_name.empty()) {
@@ -239,7 +447,6 @@ namespace ast {
                     if (!n) return;
                     if (n->to_string() == "TOK_MEMBER") {
                         std::string type = find_first_type_in_subtree(n);
-                        // Исправлено: имя члена берем из TOK_ID
                         std::string id = get_id_from_tok_id_child(n);
 
                         if (!type.empty() && !id.empty()) {
@@ -274,7 +481,6 @@ namespace ast {
         }
 
         if (nodename == "TOK_DECLARATION") {
-            // Исправлено: имя функции/переменной берем из TOK_ID
             std::string type_name = find_first_type_in_subtree(node);
             std::string func_name = get_id_from_tok_id_child(node);
 
@@ -305,91 +511,20 @@ namespace ast {
     }
 
     // --- Вывод типа выражения ---
-    static std::string infer_expression_type(AstNode *expr, SemanticState &st) {
-        if (!expr) return "";
-        std::string nodename = expr->to_string();
 
-        // 1. Терминальные узлы
-        if (auto *tn = dynamic_cast<TerminalNode *>(expr)) {
-            if (tn->token_type == parser::TokenType::IDENTIFIER) {
-                std::string type = st.get_var_type(tn->value);
-                if (type.empty()) st.error(expr, "use of undeclared identifier '" + tn->value + "'");
-                return type.empty() ? "unknown" : type;
-            }
-            if (tn->token_type == parser::TokenType::NUMBER) {
-                if (tn->value.find('.') != std::string::npos) return "double";
-                return "int";
-            }
-            if (tn->token_type == parser::TokenType::STRING) {
-                if (tn->value.size() >= 2 && tn->value.front() == '\'' && tn->value.back() == '\'') {
-                    return "int";
-                }
-                return "string";
-            }
-            return "";
-        }
-
-        // 2. Узлы выражений
-        if (nodename.find("EXPR") != std::string::npos || nodename == "TOK_EXPRESSION") {
-            if (expr->children.size() == 1) {
-                return infer_expression_type(expr->children[0], st);
-            } else if (expr->children.size() >= 2) {
-                std::string left_type = infer_expression_type(expr->children[0], st);
-                AstNode* rest = expr->children[1];
-                if (rest->to_string().find("REST") != std::string::npos && rest->children.size() >= 2) {
-                    TerminalNode* op_node = dynamic_cast<TerminalNode*>(rest->children[0]);
-                    std::string op = op_node ? op_node->value : "";
-                    std::string right_type = infer_expression_type(rest->children[1], st);
-
-                    if (op.empty()) return left_type;
-
-                    if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
-                        if (left_type == "string" || right_type == "string") {
-                            if (left_type!=right_type) throw std::runtime_error("Type mismatch in string operation "+current_file_path+':'+std::to_string(expr->line));
-                            if (op != "+") {
-                                st.error(expr, "invalid operator '" + op + "' for string operands");
-                                return "unknown";
-                            }
-                            return "string";
-                        }
-                        if ((left_type == "int" || left_type == "double" || left_type == "float") &&
-                            (right_type == "int" || right_type == "double" || right_type == "float")) {
-                            if (left_type == "double" || right_type == "double") return "double";
-                            return "int";
-                        }
-                        st.error(expr, "invalid operands to '" + op + "': " + left_type + " and " + right_type);
-                        return "unknown";
-                    } else if (op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=") {
-                        if (left_type != right_type) {
-                            st.error(expr, "type mismatch in comparison: " + left_type + " " + op + " " + right_type);
-                            return "unknown";
-                        }
-                        return "bool";
-                    }
-                }
-                return left_type; // Fallback
-            }
-        }
-
-        // Рекурсия
-        for (auto* child : expr->children) {
-            std::string child_type = infer_expression_type(child, st);
-            if (!child_type.empty()) return child_type;
-        }
-
-        return "";
-    }
 
     static void semantic_check_and_validate(AstNode *node, SemanticState &st, AstNode *parent = nullptr) {
         if (!node) return;
         std::string nodename = node->to_string();
 
+        // Управление областями видимости
         bool opened_scope = false;
         if (nodename == "TOK_COMPOUNDSTMT" || nodename == "TOK_PROGRAM") {
             st.push_scope();
             opened_scope = true;
         }
 
+        // Управление контекстом функции
         bool is_func_context = false;
         std::string saved_return_type;
         std::string saved_class_context;
@@ -409,11 +544,9 @@ namespace ast {
             }
         }
 
+        // Объявление переменных
         if (nodename == "TOK_LOCALVARDECL" || nodename == "TOK_PARAM" || nodename == "TOK_DECLARATION") {
             std::string type_name = find_first_type_in_subtree(node);
-
-            // *** ИСПРАВЛЕНИЕ: Ищем идентификатор строго в дочернем узле TOK_ID ***
-            // Это предотвращает нахождение имени типа как имени переменной, если тип - пользовательский класс.
             std::string id_name = get_id_from_tok_id_child(node);
 
             bool is_func = is_function_declaration(node);
@@ -426,13 +559,85 @@ namespace ast {
             }
         }
 
+        // Проверка операторов присваивания
+        if (nodename == "TOK_ASSIGN") {
+            if (node->children.size() >= 2) {
+                AstNode* left_expr = node->children[0];
+                AstNode* right_expr = node->children[1];
+
+                std::string left_type = infer_expression_type(left_expr, st);
+                std::string right_type = infer_expression_type(right_expr, st);
+
+                if (!left_type.empty() && !right_type.empty() && left_type != "unknown" && right_type != "unknown") {
+                    if (!st.is_assignable(left_type, right_type)) {
+                        st.error(node, "cannot assign " + right_type + " to " + left_type);
+                    }
+                }
+            }
+        }
+
+        // Проверка вызовов функций
+        if (nodename == "TOK_FUNCCALL") {
+            std::string func_name = get_function_name_from_call(node);
+            FunctionInfo* finfo = st.get_function_info(func_name);
+
+            if (finfo) {
+                std::vector<std::string> arg_types = collect_argument_types(node, st);
+
+                // Проверка количества аргументов
+                if (arg_types.size() != finfo->param_types.size()) {
+                    st.error(node, "wrong number of arguments for '" + func_name + "': expected " +
+                            std::to_string(finfo->param_types.size()) + ", got " +
+                            std::to_string(arg_types.size()));
+                } else {
+                    // Проверка типов аргументов
+                    for (size_t i = 0; i < arg_types.size(); ++i) {
+                        if (!st.is_assignable(finfo->param_types[i], arg_types[i])) {
+                            st.error(node, "argument " + std::to_string(i+1) +
+                                    " type mismatch for '" + func_name + "': expected " +
+                                    finfo->param_types[i] + ", got " + arg_types[i]);
+                        }
+                    }
+                }
+            } else if (!func_name.empty()) {
+                st.error(node, "undefined function '" + func_name + "'");
+            }
+        }
+
+        // Проверка условных операторов
+        if (nodename == "TOK_IFSTMT" || nodename == "TOK_WHILESTMT") {
+            AstNode* cond_expr = find_condition_expression(node);
+            if (cond_expr) {
+                std::string cond_type = infer_expression_type(cond_expr, st);
+                if (cond_type != "bool" && !cond_type.empty() && cond_type != "unknown") {
+                    st.error(cond_expr, "condition must be boolean, got " + cond_type);
+                }
+            }
+        }
+
+        // Проверка операторов цикла
+        if (nodename == "TOK_FORSTMT") {
+            st.loop_depth++;
+        }
+
+        // Проверка break/continue
+        if (nodename == "TOK_BREAKSTMT" || nodename == "TOK_CONTINUESTMT") {
+            if (st.loop_depth == 0) {
+                st.error(node, nodename + " statement not within loop");
+            }
+        }
+
+        // Проверка операторов return
         if (nodename == "TOK_RETURNSTMT") {
             if (st.current_function_return_type.empty()) {
                 st.error(node, "return statement outside function");
             } else {
                 AstNode* expr = nullptr;
                 for (auto* c : node->children) {
-                    if (c->to_string().find("EXPR") != std::string::npos) { expr = c; break; }
+                    if (c->to_string().find("EXPR") != std::string::npos) {
+                        expr = c;
+                        break;
+                    }
                 }
 
                 std::string return_expr_type = expr ? infer_expression_type(expr, st) : "void";
@@ -446,7 +651,7 @@ namespace ast {
                     if (return_expr_type.empty() || return_expr_type == "void" || return_expr_type == "unknown") {
                         st.error(node, "non-void function must return a value");
                     }
-                    else if (return_expr_type != expected_type) {
+                    else if (!st.is_assignable(expected_type, return_expr_type)) {
                         if ((expected_type == "int" && return_expr_type == "double") ||
                             (expected_type == "double" && return_expr_type == "int")) {
                             st.warning(node, "implicit conversion from '" + return_expr_type + "' to '" + expected_type + "'");
@@ -459,14 +664,25 @@ namespace ast {
             }
         }
 
+        // Проверка выражений (общая проверка типов)
+        if (nodename.find("EXPR") != std::string::npos || nodename == "TOK_EXPRESSION") {
+            std::string expr_type = infer_expression_type(node, st);
+            // Вывод типа уже включает проверки, поэтому дополнительная проверка не нужна
+        }
+
         // Рекурсивный обход
         for (auto* c : node->children) {
             semantic_check_and_validate(c, st, node);
         }
 
+        // Восстановление состояния
         if (is_func_context) {
             st.current_function_return_type = saved_return_type;
             st.current_class_context = saved_class_context;
+        }
+
+        if (nodename == "TOK_FORSTMT") {
+            st.loop_depth--;
         }
 
         if (opened_scope) st.pop_scope();
@@ -475,12 +691,19 @@ namespace ast {
     bool semantic_check(AstNode* root) {
         if (!root) return true;
         SemanticState st;
+
+        // Добавление базовых типов
         st.add_type("int"); st.add_type("float"); st.add_type("double");
         st.add_type("string"); st.add_type("bool"); st.add_type("void"); st.add_type("vector");
+        st.add_type("char");
 
+        // Добавление стандартных функций
         st.add_function("main", {"int", {}, 0, 0});
         st.add_function("print", {"void", {"string"}, 0, 0});
         st.add_function("input", {"string", {}, 0, 0});
+        st.add_function("strlen", {"int", {"string"}, 0, 0});
+        st.add_function("strcat", {"string", {"string", "string"}, 0, 0});
+        st.add_function("itoa", {"string", {"int"}, 0, 0});
 
         try {
             semantic_collect_defs(root, st);
@@ -491,8 +714,10 @@ namespace ast {
         }
 
         if (!st.messages.empty()) {
-            std::cerr << "Semantic checks reported issues (see stderr).\n";
-            for (auto& m : st.messages) std::cerr << m << "\n";
+            std::cerr << "Semantic checks reported " << st.messages.size() << " issue(s):\n";
+            for (auto& m : st.messages) {
+                std::cerr << m << "\n";
+            }
             return false;
         }
         return true;
@@ -546,6 +771,14 @@ namespace ast {
                         else return std::nullopt;
                     }
                     if (op == "%") return std::fmod(l, r);
+
+                    // Логические операции
+                    if (op == "==") return l == r ? 1.0 : 0.0;
+                    if (op == "!=") return l != r ? 1.0 : 0.0;
+                    if (op == "<") return l < r ? 1.0 : 0.0;
+                    if (op == ">") return l > r ? 1.0 : 0.0;
+                    if (op == "<=") return l <= r ? 1.0 : 0.0;
+                    if (op == ">=") return l >= r ? 1.0 : 0.0;
                 }
             }
         }
@@ -554,7 +787,6 @@ namespace ast {
     }
 
     static void dead_code_elimination(AstNode* node) {
-        return ;
         if (!node) return;
 
         for (auto* c : node->children) {
@@ -589,7 +821,6 @@ namespace ast {
         }
     }
 
-
     void optimize_ast(AstNode* root) {
         if (!root) return;
 
@@ -601,7 +832,6 @@ namespace ast {
 
         std::string nodename = root->to_string();
         if (nodename.find("TOK_EXPR") != std::string::npos) {
-
             bool has_potential = (root->children.size() > 1);
 
             if (has_potential) {
