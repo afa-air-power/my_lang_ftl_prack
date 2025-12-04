@@ -345,6 +345,7 @@ namespace ast {
 
                     if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
                         if (left_type == "string" || right_type == "string") {
+                            if (left_type!=right_type) throw std::runtime_error("Type mismatch in string operation "+current_file_path+':'+std::to_string(expr->line));
                             if (op != "+") {
                                 st.error(expr, "invalid operator '" + op + "' for string operands");
                                 return "unknown";
