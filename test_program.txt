@@ -61,12 +61,14 @@ class human {
 } ; // end class human
 
 
-
+int now;
 // -------------------------------
 // --- Пример использования (main)
 // -------------------------------
 
-
+int f(int x){
+return x;
+}
 
 int main() {
     int now;
@@ -75,8 +77,12 @@ int main() {
     human p1;
     human p2;
     human p3;
-
-
+    double f;
+    f = f(4);
+    6+'';
+    print(f);
+    p0.id = 5 + "";
+    //double now;
     // --- Инициализация (примерные значения) ---
     p0.id = 0;
     p0.name = "Alice";
