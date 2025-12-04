@@ -1,4 +1,3 @@
-
 #include "ast_utils.hpp"
 #include <fstream>
 #include <iostream>
@@ -155,6 +154,17 @@ namespace ast {
         return {};
     }
 
+    // *** НОВАЯ ФУНКЦИЯ: Поиск ID только в узле TOK_ID ***
+    static std::string get_id_from_tok_id_child(AstNode* parent) {
+        if (!parent) return "";
+        for (auto* c : parent->children) {
+            if (c->to_string() == "TOK_ID") {
+                return find_first_identifier_in_subtree(c);
+            }
+        }
+        return "";
+    }
+
     static std::string find_first_type_in_subtree(AstNode *node) {
         if (!node) return {};
         if (node->to_string() == "TOK_TYPE") {
@@ -220,15 +230,17 @@ namespace ast {
         std::string nodename = node->to_string();
 
         if (nodename == "TOK_CLASSDECL") {
-            // ... (логика сбора классов, оставлена без изменений)
-            std::string class_name = find_first_identifier_in_subtree(node);
+            // Исправлено: имя класса берем из TOK_ID
+            std::string class_name = get_id_from_tok_id_child(node);
+
             if (!class_name.empty()) {
                 ClassInfo info;
                 std::function<void(AstNode *)> find_members = [&](AstNode *n) {
                     if (!n) return;
                     if (n->to_string() == "TOK_MEMBER") {
                         std::string type = find_first_type_in_subtree(n);
-                        std::string id = find_first_identifier_in_subtree(n);
+                        // Исправлено: имя члена берем из TOK_ID
+                        std::string id = get_id_from_tok_id_child(n);
 
                         if (!type.empty() && !id.empty()) {
                             if (is_function_declaration(n)) {
@@ -262,9 +274,9 @@ namespace ast {
         }
 
         if (nodename == "TOK_DECLARATION") {
-            // ... (логика сбора глобальных функций, оставлена без изменений)
+            // Исправлено: имя функции/переменной берем из TOK_ID
             std::string type_name = find_first_type_in_subtree(node);
-            std::string func_name = find_first_identifier_in_subtree(node);
+            std::string func_name = get_id_from_tok_id_child(node);
 
             if (!type_name.empty() && !func_name.empty() && is_function_declaration(node)) {
                 FunctionInfo finfo;
@@ -292,16 +304,15 @@ namespace ast {
         }
     }
 
-    // --- Вывод типа выражения (Исправленная логика) ---
+    // --- Вывод типа выражения ---
     static std::string infer_expression_type(AstNode *expr, SemanticState &st) {
         if (!expr) return "";
         std::string nodename = expr->to_string();
 
-        // 1. Терминальные узлы (Литералы и Идентификаторы)
+        // 1. Терминальные узлы
         if (auto *tn = dynamic_cast<TerminalNode *>(expr)) {
             if (tn->token_type == parser::TokenType::IDENTIFIER) {
                 std::string type = st.get_var_type(tn->value);
-                // Добавляем ошибку, если переменная не объявлена
                 if (type.empty()) st.error(expr, "use of undeclared identifier '" + tn->value + "'");
                 return type.empty() ? "unknown" : type;
             }
@@ -310,17 +321,15 @@ namespace ast {
                 return "int";
             }
             if (tn->token_type == parser::TokenType::STRING) {
-                // Строгие правила C/C++: 'c' (char) -> int (ASCII); "str" (string) -> string.
                 if (tn->value.size() >= 2 && tn->value.front() == '\'' && tn->value.back() == '\'') {
-                    // Символьный литерал (например, '0')
                     return "int";
                 }
-                return "string"; // Строковый литерал (например, "0")
+                return "string";
             }
             return "";
         }
 
-        // 2. Узлы выражений (TOK_EXPR*) и другие составные узлы
+        // 2. Узлы выражений
         if (nodename.find("EXPR") != std::string::npos || nodename == "TOK_EXPRESSION") {
             if (expr->children.size() == 1) {
                 return infer_expression_type(expr->children[0], st);
@@ -334,14 +343,13 @@ namespace ast {
 
                     if (op.empty()) return left_type;
 
-                    // Проверка совместимости типов и возврат результирующего типа
                     if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
                         if (left_type == "string" || right_type == "string") {
                             if (op != "+") {
                                 st.error(expr, "invalid operator '" + op + "' for string operands");
                                 return "unknown";
                             }
-                            return "string"; // Только + для конкатенации строк
+                            return "string";
                         }
                         if ((left_type == "int" || left_type == "double" || left_type == "float") &&
                             (right_type == "int" || right_type == "double" || right_type == "float")) {
@@ -357,19 +365,18 @@ namespace ast {
                         }
                         return "bool";
                     }
-                    // Добавьте обработку для других операторов (&&, || и т.д.)
                 }
                 return left_type; // Fallback
             }
         }
 
-        // Рекурсия для других узлов
+        // Рекурсия
         for (auto* child : expr->children) {
             std::string child_type = infer_expression_type(child, st);
             if (!child_type.empty()) return child_type;
         }
 
-        return ""; // Тип не определен
+        return "";
     }
 
     static void semantic_check_and_validate(AstNode *node, SemanticState &st, AstNode *parent = nullptr) {
@@ -403,7 +410,11 @@ namespace ast {
 
         if (nodename == "TOK_LOCALVARDECL" || nodename == "TOK_PARAM" || nodename == "TOK_DECLARATION") {
             std::string type_name = find_first_type_in_subtree(node);
-            std::string id_name = find_first_identifier_in_subtree(node);
+
+            // *** ИСПРАВЛЕНИЕ: Ищем идентификатор строго в дочернем узле TOK_ID ***
+            // Это предотвращает нахождение имени типа как имени переменной, если тип - пользовательский класс.
+            std::string id_name = get_id_from_tok_id_child(node);
+
             bool is_func = is_function_declaration(node);
 
             if (!id_name.empty() && !type_name.empty() && !is_func) {
@@ -435,14 +446,10 @@ namespace ast {
                         st.error(node, "non-void function must return a value");
                     }
                     else if (return_expr_type != expected_type) {
-                        // Разрешаем int <-> double (неявное преобразование)
                         if ((expected_type == "int" && return_expr_type == "double") ||
                             (expected_type == "double" && return_expr_type == "int")) {
                             st.warning(node, "implicit conversion from '" + return_expr_type + "' to '" + expected_type + "'");
                         }
-                        // Для примера `int f() { return '0'; }`:
-                        // '0' выводится как 'int', поэтому здесь не будет ошибки.
-                        // Если бы это было `return "0";` (string), ошибка бы возникла.
                         else {
                             st.error(node, "return type mismatch: expected '" + expected_type + "', got '" + return_expr_type + "'");
                         }
@@ -451,7 +458,7 @@ namespace ast {
             }
         }
 
-        // Рекурсивный обход (всегда, без условия !is_func_context)
+        // Рекурсивный обход
         for (auto* c : node->children) {
             semantic_check_and_validate(c, st, node);
         }
@@ -470,10 +477,9 @@ namespace ast {
         st.add_type("int"); st.add_type("float"); st.add_type("double");
         st.add_type("string"); st.add_type("bool"); st.add_type("void"); st.add_type("vector");
 
-        // FIX 1: Считаем, что main всегда присутствует и является корректной функцией
-        st.add_function("main", {"int", {}, 0, 0}); // int main() {}
-        st.add_function("print", {"void", {"string"}, 0, 0}); // print(string)
-        st.add_function("input", {"string", {}, 0, 0}); // string input()
+        st.add_function("main", {"int", {}, 0, 0});
+        st.add_function("print", {"void", {"string"}, 0, 0});
+        st.add_function("input", {"string", {}, 0, 0});
 
         try {
             semantic_collect_defs(root, st);
@@ -495,7 +501,6 @@ namespace ast {
     // ОПТИМИЗАЦИИ (Constant Folding и Dead Code Elimination)
     // =============================================================================
 
-    // Вспомогательная функция для Constant Folding
     static std::optional<double> try_evaluate_expression(AstNode *node) {
         if (!node) return std::nullopt;
 
@@ -547,8 +552,8 @@ namespace ast {
         return std::nullopt;
     }
 
-    // Dead Code Elimination
     static void dead_code_elimination(AstNode* node) {
+        return ;
         if (!node) return;
 
         for (auto* c : node->children) {
@@ -589,7 +594,6 @@ namespace ast {
 
         dead_code_elimination(root);
 
-        // Constant Folding
         for (auto* c : root->children) {
             optimize_ast(c);
         }
