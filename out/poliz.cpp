@@ -252,35 +252,36 @@ namespace poliz {
 
     // --- Реализация print (Печать ПОЛИЗа) ---
     // Вынесена из тела класса Poliz с указанием области видимости
+    std::ofstream cout ("poliz.txt");
     void Poliz::print() {
-        std::cout << "--- POLIZ ---\n";
+        cout << "--- POLIZ ---\n";
         for (int i = 0; i < items.size(); ++i) {
-            std::cout << i << ": ";
+            cout << i << ": ";
             const auto& item = items[i];
             switch (item.op) {
-                case OpType::PUSH_VAL: std::cout << "PUSH " << item.value; break;
-                case OpType::ADD: std::cout << "ADD"; break;
-                case OpType::SUB: std::cout << "SUB"; break;
-                case OpType::MUL: std::cout << "MUL"; break;
-                case OpType::DIV: std::cout << "DIV"; break;
-                case OpType::MOD: std::cout << "MOD"; break;
-                case OpType::ASSIGN: std::cout << "ASSIGN"; break;
-                case OpType::GOTO: std::cout << "GOTO " << item.jump_index; break;
-                case OpType::JMP_FALSE: std::cout << "JMP_FALSE " << item.jump_index; break;
-                case OpType::PRINT: std::cout << "PRINT"; break;
-                case OpType::MEMBER: std::cout << "DOT_ACCESS"; break;
-                case OpType::EQ: std::cout << "EQ (==)"; break;
-                case OpType::NEQ: std::cout << "NEQ (!=)"; break;
-                case OpType::LT: std::cout << "LT (<)"; break;
-                case OpType::GT: std::cout << "GT (>)"; break;
-                case OpType::LEQ: std::cout << "LEQ (<=)"; break;
-                case OpType::GEQ: std::cout << "GEQ (>=)"; break;
-                case OpType::CALL: std::cout << "CALL"; break;
-                case OpType::INPUT: std::cout << "INPUT"; break;
-                default: std::cout << "OP_" << (int)item.op; break;
+                case OpType::PUSH_VAL: cout << "PUSH " << item.value; break;
+                case OpType::ADD: cout << "ADD"; break;
+                case OpType::SUB: cout << "SUB"; break;
+                case OpType::MUL: cout << "MUL"; break;
+                case OpType::DIV: cout << "DIV"; break;
+                case OpType::MOD: cout << "MOD"; break;
+                case OpType::ASSIGN: cout << "ASSIGN"; break;
+                case OpType::GOTO: cout << "GOTO " << item.jump_index; break;
+                case OpType::JMP_FALSE: cout << "JMP_FALSE " << item.jump_index; break;
+                case OpType::PRINT: cout << "PRINT"; break;
+                case OpType::MEMBER: cout << "DOT_ACCESS"; break;
+                case OpType::EQ: cout << "EQ (==)"; break;
+                case OpType::NEQ: cout << "NEQ (!=)"; break;
+                case OpType::LT: cout << "LT (<)"; break;
+                case OpType::GT: cout << "GT (>)"; break;
+                case OpType::LEQ: cout << "LEQ (<=)"; break;
+                case OpType::GEQ: cout << "GEQ (>=)"; break;
+                case OpType::CALL: cout << "CALL"; break;
+                case OpType::INPUT: cout << "INPUT"; break;
+                default: cout << "OP_" << (int)item.op; break;
             }
-            std::cout << "\n";
+            cout << "\n";
         }
-        std::cout << "-------------\n";
+        cout << "-------------\n";
     }
 } // namespace poliz
