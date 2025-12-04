@@ -20,7 +20,7 @@ namespace poliz {
 
     // --- Вспомогательная функция для маппинга токенов в операции ---
     // Вынесена из тела класса Poliz с указанием области видимости
-    OpType Poliz::token_to_op(parser::TokenType tt, const std::string& val) {
+    OpType Poliz::token_to_op(parser::TokenType tt, const std::string &val) {
         using namespace parser;
         switch (tt) {
             case TokenType::TOK_PLUS: return OpType::ADD;
