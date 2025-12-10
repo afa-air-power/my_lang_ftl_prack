@@ -63,6 +63,12 @@ add_executable(my_lang_ftl_prak
         out/ast.cpp
         out/poliz.cpp
         out/poliz.hpp
+        out/runner.hpp
+        out/runner.cpp
+        out/ast_check.cpp
+        out/ast_functiontree.cpp
+        out/ast_functiontree.hpp
+        out/ast_check.hpp
 )
 
 add_dependencies(my_lang_ftl_prak  copy_test_program)

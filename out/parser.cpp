@@ -3,7 +3,13 @@
 #include <vector>
 #include <fstream>
 #include "ast_utils.hpp"
-
+#include "parser.hpp"
+#include "ast_check.hpp"  // Added for semantic_check
+#include "ast_functiontree.hpp"  // Added for optimize_ast
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include "ast_utils.hpp"
 // *** ВАЖНОЕ ИСПРАВЛЕНИЕ: Глобальное определение для линковки с ast_utils.cpp ***
 std::string current_file_path = "test_program.txt";
 
