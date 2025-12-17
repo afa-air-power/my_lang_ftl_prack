@@ -69,6 +69,8 @@ add_executable(my_lang_ftl_prak
         out/ast_functiontree.cpp
         out/ast_functiontree.hpp
         out/ast_check.hpp
+        out/command_tree.cpp
+        out/command_tree.hpp
 )
 
 add_dependencies(my_lang_ftl_prak  copy_test_program)

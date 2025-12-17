@@ -51,8 +51,32 @@ namespace poliz {
 
         std::string nodename = node->to_string();
 
+        // Обработка TOK_LITERAL
+        if (nodename == "TOK_LITERAL") {
+            // Найти NUMBER или STRING внутри
+            for (auto *c: node->children) {
+                if (auto *tn = dynamic_cast<ast::TerminalNode *>(c)) {
+                    if (tn->token_type == parser::TokenType::NUMBER) {
+                        int reg = alloc_register();
+                        Operand dst(reg);
+                        Operand src(OperandType::IMMEDIATE, tn->value);
+                        emit(Instruction(OpType::LOAD, dst, src));
+                        return dst;
+                    }
+                    if (tn->token_type == parser::TokenType::STRING) {
+                        int reg = alloc_register();
+                        Operand dst(reg);
+                        Operand src(OperandType::IMMEDIATE, tn->value);
+                        emit(Instruction(OpType::LOAD, dst, src));
+                        return dst;
+                    }
+                }
+            }
+            return Operand();
+        }
+
         // Терминалы
-        if (nodename == "Terminal") {
+        if (nodename.find("Terminal") != std::string::npos) {
             auto *term = dynamic_cast<ast::TerminalNode *>(node);
             if (!term) return Operand();
 
@@ -83,126 +107,290 @@ namespace poliz {
             }
         }
 
-        // Бинарные операции
-        if (nodename.find("EXPR") != std::string::npos && node->children.size() >= 2) {
+        // Если это нетерминал выражения, рекурсивно обработать
+        if (nodename.find("EXPR") != std::string::npos || nodename.find("ATOM") != std::string::npos) {
+            if (node->children.empty()) {
+                return Operand();
+            }
+
+            // Специальная обработка для EXPR16 с POSTFIXTAIL (функции)
+            if (nodename == "TOK_EXPR16" && node->children.size() >= 2) {
+                ast::AstNode *atom = node->children[0];
+                ast::AstNode *postfix = node->children[1];
+
+                if (atom && postfix && postfix->to_string() == "TOK_POSTFIXTAIL") {
+                    // Найти функцию в ATOM
+                    std::string func_name;
+
+                    std::function<bool(ast::AstNode*)> find_func_name =
+                        [&](ast::AstNode *n) -> bool {
+                            if (auto *tn = dynamic_cast<ast::TerminalNode *>(n)) {
+                                if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                                    func_name = tn->value;
+                                    return true;
+                                }
+                            }
+                            for (auto *child: n->children) {
+                                if (find_func_name(child)) return true;
+                            }
+                            return false;
+                        };
+
+                    find_func_name(atom);
+
+                    if (func_name == "print" && !postfix->children.empty()) {
+                        // Найти аргументы в POSTFIX_ITEM
+                        for (auto *item: postfix->children) {
+                            if (item->to_string() == "TOK_POSTFIX_ITEM") {
+                                // Ищем TOK_ARGLIST в POSTFIX_ITEM
+                                for (auto *child: item->children) {
+                                    if (child->to_string() == "TOK_ARGLIST") {
+                                        // Обработать аргументы
+                                        for (auto *expr: child->children) {
+                                            std::string expr_name = expr->to_string();
+                                            if (expr_name == "TOK_EXPRESSION" ||
+                                                expr_name.find("EXPR") != std::string::npos) {
+                                                Operand val = generate_expr(expr);
+                                                if (val.type != OperandType::NONE) {
+                                                    emit(Instruction(OpType::PRINT, val));
+                                                    free_register(val.reg_num);
+                                                }
+                                            }
+                                        }
+                                        // Генерируем PRINT но не возвращаемся рано
+                                        // вместо этого продолжаем как обычное выражение
+                                        // (print возвращает 0 или void)
+                                        int reg = alloc_register();
+                                        emit(Instruction(OpType::LOAD, Operand(reg),
+                                                       Operand(OperandType::IMMEDIATE, "0")));
+                                        return Operand(reg);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (node->children.size() == 1) {
+                return generate_expr(node->children[0]);
+            }
+
+            // Проверить есть ли в этом выражении оператор присваивания
+            // Если да - обработать специально
+            if (node->children.size() >= 2) {
+                ast::AstNode *rest = node->children[1];
+                if (rest && !rest->children.empty()) {
+                    // Ищем ASSIGNOP в rest
+                    for (auto *c: rest->children) {
+                        if (c->to_string() == "TOK_ASSIGNOP") {
+                            // Это присваивание!
+                            // Левая часть - это node->children[0] (переменная)
+                            // Ищем переменную в левой части
+                            std::string var_name;
+
+                            std::function<bool(ast::AstNode*)> find_var_name =
+                                [&](ast::AstNode *n) -> bool {
+                                    if (auto *tn = dynamic_cast<ast::TerminalNode *>(n)) {
+                                        if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                                            var_name = tn->value;
+                                            return true;
+                                        }
+                                    }
+                                    for (auto *child: n->children) {
+                                        if (find_var_name(child)) return true;
+                                    }
+                                    return false;
+                                };
+
+                            find_var_name(node->children[0]);
+
+                            if (!var_name.empty()) {
+                                // Ищем выражение для присваивания (TOK_EXPR02 в rest)
+                                ast::AstNode *right_expr = nullptr;
+                                for (auto *sibling: rest->children) {
+                                    if (sibling->to_string().find("EXPR") != std::string::npos) {
+                                        right_expr = sibling;
+                                        break;
+                                    }
+                                }
+
+                                if (right_expr) {
+                                    Operand value = generate_expr(right_expr);
+                                    Operand var_op(OperandType::VARIABLE, var_name);
+                                    emit(Instruction(OpType::STORE, var_op, value));
+                                    free_register(value.reg_num);
+                                    return value;  // Возвращаем значение присваивания
+                                }
+                            }
+                            return Operand();
+                        }
+                    }
+                }
+            }
+
+            // Нормальное выражение без присваивания
             Operand left = generate_expr(node->children[0]);
 
-            ast::AstNode *rest = node->children[1];
-            if (!rest || rest->children.empty()) return left;
+            if (node->children.size() >= 2) {
+                ast::AstNode *rest = node->children[1];
+                if (!rest) return left;
 
-            // Найти оператор
-            ast::TerminalNode *op_node = nullptr;
-            ast::AstNode *right_expr = nullptr;
+                // Найти оператор в rest
+                ast::TerminalNode *op_node = nullptr;
+                ast::AstNode *right_expr = nullptr;
 
-            for (size_t i = 0; i < rest->children.size(); i++) {
-                if (auto *tn = dynamic_cast<ast::TerminalNode *>(rest->children[i])) {
-                    op_node = tn;
-                    if (i + 1 < rest->children.size()) {
-                        right_expr = rest->children[i + 1];
+                // Сначала смотрим прямо в rest->children
+                for (size_t i = 0; i < rest->children.size(); i++) {
+                    if (auto *tn = dynamic_cast<ast::TerminalNode *>(rest->children[i])) {
+                        op_node = tn;
+                        if (i + 1 < rest->children.size()) {
+                            right_expr = rest->children[i + 1];
+                        }
+                        break;
                     }
-                    break;
                 }
-            }
 
-            if (!op_node || !right_expr) return left;
+                // Если не нашли, пробуем ещё раз пропустив нетерминалы
+                if (!op_node && rest->children.size() > 0) {
+                    // Может быть структура другая - ищем рекурсивно
+                    std::function<void(ast::AstNode*)> search_deeper = [&](ast::AstNode* n) {
+                        if (!n || op_node) return;
 
-            Operand right = generate_expr(right_expr);
-            int result_reg = alloc_register();
-            Operand result(result_reg);
-
-            std::string op = op_node->value;
-
-            // Арифметические операции
-            if (op == "+") emit(Instruction(OpType::ADD, result, left, right));
-            else if (op == "-") emit(Instruction(OpType::SUB, result, left, right));
-            else if (op == "*") emit(Instruction(OpType::MUL, result, left, right));
-            else if (op == "/") emit(Instruction(OpType::DIV, result, left, right));
-            else if (op == "%") emit(Instruction(OpType::MOD, result, left, right));
-
-                // Логические операции
-            else if (op == "&&") emit(Instruction(OpType::AND, result, left, right));
-            else if (op == "||") emit(Instruction(OpType::OR, result, left, right));
-
-                // Сравнения
-            else if (op == "==") {
-                emit(Instruction(OpType::CMP, left, right));
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
-                std::string label_true = new_label("eq_true");
-                std::string label_end = new_label("eq_end");
-                emit(Instruction(OpType::JE, Operand(OperandType::LABEL, label_true)));
-                emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
-                emit_label(label_true);
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
-                emit_label(label_end);
-            } else if (op == "!=") {
-                emit(Instruction(OpType::CMP, left, right));
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
-                std::string label_true = new_label("ne_true");
-                std::string label_end = new_label("ne_end");
-                emit(Instruction(OpType::JNE, Operand(OperandType::LABEL, label_true)));
-                emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
-                emit_label(label_true);
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
-                emit_label(label_end);
-            } else if (op == "<") {
-                emit(Instruction(OpType::CMP, left, right));
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
-                std::string label_true = new_label("lt_true");
-                std::string label_end = new_label("lt_end");
-                emit(Instruction(OpType::JL, Operand(OperandType::LABEL, label_true)));
-                emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
-                emit_label(label_true);
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
-                emit_label(label_end);
-            } else if (op == ">") {
-                emit(Instruction(OpType::CMP, left, right));
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
-                std::string label_true = new_label("gt_true");
-                std::string label_end = new_label("gt_end");
-                emit(Instruction(OpType::JG, Operand(OperandType::LABEL, label_true)));
-                emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
-                emit_label(label_true);
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
-                emit_label(label_end);
-            } else if (op == "<=") {
-                emit(Instruction(OpType::CMP, left, right));
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
-                std::string label_true = new_label("le_true");
-                std::string label_end = new_label("le_end");
-                emit(Instruction(OpType::JLE, Operand(OperandType::LABEL, label_true)));
-                emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
-                emit_label(label_true);
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
-                emit_label(label_end);
-            } else if (op == ">=") {
-                emit(Instruction(OpType::CMP, left, right));
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
-                std::string label_true = new_label("ge_true");
-                std::string label_end = new_label("ge_end");
-                emit(Instruction(OpType::JGE, Operand(OperandType::LABEL, label_true)));
-                emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
-                emit_label(label_true);
-                emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
-                emit_label(label_end);
-            }
-
-            // Присваивание
-            else if (op == "=") {
-                if (left.type == OperandType::VARIABLE) {
-                    emit(Instruction(OpType::STORE, left, right));
-                    return right;
+                        for (size_t i = 0; i < n->children.size(); i++) {
+                            auto *c = n->children[i];
+                            if (auto *tn = dynamic_cast<ast::TerminalNode *>(c)) {
+                                if (tn->value == "+" || tn->value == "-" || tn->value == "*" ||
+                                    tn->value == "/" || tn->value == "%" || tn->value == "==" ||
+                                    tn->value == "!=" || tn->value == "<" || tn->value == ">" ||
+                                    tn->value == "<=" || tn->value == ">=") {
+                                    op_node = tn;
+                                    if (i + 1 < n->children.size()) {
+                                        right_expr = n->children[i + 1];
+                                    }
+                                    return;
+                                }
+                            }
+                            search_deeper(c);
+                        }
+                    };
+                    search_deeper(rest);
                 }
+
+                if (!op_node || !right_expr) return left;
+
+                Operand right = generate_expr(right_expr);
+                int result_reg = alloc_register();
+                Operand result(result_reg);
+
+                std::string op = op_node->value;
+
+                // Арифметические операции
+                if (op == "+") emit(Instruction(OpType::ADD, result, left, right));
+                else if (op == "-") emit(Instruction(OpType::SUB, result, left, right));
+                else if (op == "*") emit(Instruction(OpType::MUL, result, left, right));
+                else if (op == "/") emit(Instruction(OpType::DIV, result, left, right));
+                else if (op == "%") emit(Instruction(OpType::MOD, result, left, right));
+
+                    // Логические операции
+                else if (op == "&&") emit(Instruction(OpType::AND, result, left, right));
+                else if (op == "||") emit(Instruction(OpType::OR, result, left, right));
+
+                    // Сравнения
+                else if (op == "==") {
+                    emit(Instruction(OpType::CMP, left, right));
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
+                    std::string label_true = new_label("eq_true");
+                    std::string label_end = new_label("eq_end");
+                    emit(Instruction(OpType::JE, Operand(OperandType::LABEL, label_true)));
+                    emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
+                    emit_label(label_true);
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
+                    emit_label(label_end);
+                } else if (op == "!=") {
+                    emit(Instruction(OpType::CMP, left, right));
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
+                    std::string label_true = new_label("ne_true");
+                    std::string label_end = new_label("ne_end");
+                    emit(Instruction(OpType::JNE, Operand(OperandType::LABEL, label_true)));
+                    emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
+                    emit_label(label_true);
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
+                    emit_label(label_end);
+                } else if (op == "<") {
+                    emit(Instruction(OpType::CMP, left, right));
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
+                    std::string label_true = new_label("lt_true");
+                    std::string label_end = new_label("lt_end");
+                    emit(Instruction(OpType::JL, Operand(OperandType::LABEL, label_true)));
+                    emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
+                    emit_label(label_true);
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
+                    emit_label(label_end);
+                } else if (op == ">") {
+                    emit(Instruction(OpType::CMP, left, right));
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
+                    std::string label_true = new_label("gt_true");
+                    std::string label_end = new_label("gt_end");
+                    emit(Instruction(OpType::JG, Operand(OperandType::LABEL, label_true)));
+                    emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
+                    emit_label(label_true);
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
+                    emit_label(label_end);
+                } else if (op == "<=") {
+                    emit(Instruction(OpType::CMP, left, right));
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
+                    std::string label_true = new_label("le_true");
+                    std::string label_end = new_label("le_end");
+                    emit(Instruction(OpType::JLE, Operand(OperandType::LABEL, label_true)));
+                    emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
+                    emit_label(label_true);
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
+                    emit_label(label_end);
+                } else if (op == ">=") {
+                    emit(Instruction(OpType::CMP, left, right));
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "0")));
+                    std::string label_true = new_label("ge_true");
+                    std::string label_end = new_label("ge_end");
+                    emit(Instruction(OpType::JGE, Operand(OperandType::LABEL, label_true)));
+                    emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_end)));
+                    emit_label(label_true);
+                    emit(Instruction(OpType::LOAD, result, Operand(OperandType::IMMEDIATE, "1")));
+                    emit_label(label_end);
+                }
+
+                free_register(left.reg_num);
+                free_register(right.reg_num);
+
+                return result;
             }
 
-            free_register(left.reg_num);
-            free_register(right.reg_num);
-
-            return result;
+            return left;
         }
 
-        // Рекурсия для вложенных выражений
-        if (node->children.size() == 1) {
-            return generate_expr(node->children[0]);
+        // Обработка функций (например, print)
+        if (nodename.find("INO") != std::string::npos || nodename.find("POSTFIX") != std::string::npos) {
+            // Поиск идентификатора функции и аргументов
+            for (auto *c: node->children) {
+                if (auto *tn = dynamic_cast<ast::TerminalNode *>(c)) {
+                    if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                        std::string func_name = tn->value;
+
+                        if (func_name == "print") {
+                            // Найти аргументы
+                            for (auto *arg: node->children) {
+                                if (arg->to_string() == "TOK_ARGLIST" ||
+                                    arg->to_string().find("EXPR") != std::string::npos) {
+                                    Operand val = generate_expr(arg);
+                                    emit(Instruction(OpType::PRINT, val));
+                                    free_register(val.reg_num);
+                                }
+                            }
+                        }
+                    }
+                }
+                generate_expr(c);
+            }
         }
 
         return Operand();
@@ -212,6 +400,61 @@ namespace poliz {
         if (!node) return;
 
         std::string nodename = node->to_string();
+
+        // DECLARATIONLIST - обрабатывать все декларации
+        if (nodename == "TOK_DECLARATIONLIST") {
+            for (auto *c: node->children) {
+                generate_stmt(c);
+            }
+            return;
+        }
+
+        // DECLARATION - обработать деклараци функции или переменной
+        if (nodename == "TOK_DECLARATION") {
+            // Поиск DECLSUFFIX который содержит функцию
+            ast::AstNode *declsuffix = nullptr;
+            for (auto *c: node->children) {
+                if (c->to_string() == "TOK_DECLSUFFIX") {
+                    declsuffix = c;
+                    break;
+                }
+            }
+
+            if (declsuffix) {
+                // Ищем TOK_COMPOUNDSTMT (тело функции)
+                for (auto *c: declsuffix->children) {
+                    if (c->to_string() == "TOK_COMPOUNDSTMT") {
+                        generate_stmt(c);
+                        return;
+                    }
+                }
+            }
+            return;
+        }
+
+        // STMTLIST - обрабатывать все выражения в списке
+        if (nodename == "TOK_STMTLIST") {
+            for (auto *c: node->children) {
+                generate_stmt(c);
+            }
+            return;
+        }
+
+        // STATEMENT - обработать различные типы выражений
+        if (nodename == "TOK_STATEMENT") {
+            for (auto *c: node->children) {
+                generate_stmt(c);
+            }
+            return;
+        }
+
+        // COMPOUNDSTMT - обрабатывать блок кода
+        if (nodename == "TOK_COMPOUNDSTMT") {
+            for (auto *c: node->children) {
+                generate_stmt(c);
+            }
+            return;
+        }
 
         // IF statement
         if (nodename == "TOK_IFSTMT") {
@@ -294,7 +537,8 @@ namespace poliz {
                 }
             }
 
-            if (id_node && init_expr) {
+            // Если нет инициализации, просто декларировать переменную
+            if (id_node) {
                 std::string var_name;
                 for (auto *c: id_node->children) {
                     if (auto *tn = dynamic_cast<ast::TerminalNode *>(c)) {
@@ -304,10 +548,12 @@ namespace poliz {
                 }
 
                 if (!var_name.empty()) {
-                    Operand value_reg = generate_expr(init_expr);
-                    Operand var_op(OperandType::VARIABLE, var_name);
-                    emit(Instruction(OpType::STORE, var_op, value_reg));
-                    free_register(value_reg.reg_num);
+                    if (init_expr) {
+                        Operand value_reg = generate_expr(init_expr);
+                        Operand var_op(OperandType::VARIABLE, var_name);
+                        emit(Instruction(OpType::STORE, var_op, value_reg));
+                        free_register(value_reg.reg_num);
+                    }
                 }
             }
         }
@@ -315,7 +561,10 @@ namespace poliz {
         // Expression statement
         else if (nodename == "TOK_EXPRESSIONSTMT") {
             for (auto *c: node->children) {
-                if (c->to_string().find("EXPR") != std::string::npos) {
+                if (c->to_string() == "TOK_EXPRESSION") {
+                    Operand result = generate_expr(c);
+                    free_register(result.reg_num);
+                } else if (c->to_string().find("EXPR") != std::string::npos) {
                     Operand result = generate_expr(c);
                     free_register(result.reg_num);
                 }
@@ -344,7 +593,7 @@ namespace poliz {
             }
         }
 
-        // Рекурсивная обработка
+        // Рекурсивная обработка для неизвестных узлов
         for (auto *c: node->children) {
             generate_stmt(c);
         }
@@ -360,8 +609,21 @@ namespace poliz {
         code.clear();
         label_map.clear();
 
-        // Генерация кода
-        generate_stmt(root);
+        // Обработка корня программы
+        std::string root_name = root->to_string();
+
+        // Если это программа, ищем main функцию
+        if (root_name == "TOK_PROGRAM") {
+            // Рекурсивно обработать все потомки
+            for (auto* child : root->children) {
+                if (child) {
+                    generate_stmt(child);
+                }
+            }
+        } else {
+            // Генерация кода для общего случая
+            generate_stmt(root);
+        }
 
         // Завершение программы
         emit(Instruction(OpType::HALT));
