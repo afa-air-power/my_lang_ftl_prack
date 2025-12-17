@@ -3,6 +3,7 @@
 #include "ast_utils.hpp"
 #include "ast.hpp"  // For full definitions
 #include "keywords.hpp"  // For TokenType
+#include "command_tree.hpp"  // ← НОВОЕ: интеграция Command Tree
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -14,7 +15,7 @@
 #include <functional>
 #include <cmath>
 #include <optional>
-#include <stack>  // For cycle detection
+#include <stack>
 
 namespace ast {
     // =============================================================================
@@ -197,7 +198,7 @@ namespace ast {
         if (!call_node || !func_body) return;
 
         // Copy the body (simple clone; assume no params for now, or handle args if needed)
-        AstNode *body_copy = func_body->clone(); // Assume AstNode has clone() method; implement if not
+        AstNode *body_copy = func_body->clone(); // deep-clone the function body
 
         // Replace call_node with body_copy
         // But since call_node may have parent, need to replace in parent's children

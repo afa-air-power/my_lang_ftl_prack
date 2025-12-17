@@ -3,17 +3,14 @@
 #include <iostream>
 #include "out/lexer.hpp"
 #include "out/parser.hpp"
-#include "out/ast.hpp"       // Для типа AstNode
-#include "out/ast_utils.hpp" // Для semantic_check и optimize_ast
-#include "poliz.hpp"       // Для класса poliz::Poliz
-#include "ast.hpp"  // If not already present
-#include "ast_check.hpp"  // ADD THIS for ast::semantic_check
-#include "ast_functiontree.hpp"
-#include <iostream>
-#include "parser.hpp"  // Assuming this includes lexer and ast
-#include "ast_check.hpp"  // Added for semantic_check
-#include "ast_functiontree.hpp"
-extern std::string current_file_path; // Глобальная переменная из ast_utils.cpp
+#include "out/ast.hpp"
+#include "out/ast_utils.hpp"
+#include "out/poliz.hpp"
+#include "out/runner.hpp"
+#include "out/ast_check.hpp"
+#include "out/ast_functiontree.hpp"
+
+extern std::string current_file_path;
 
 int main(int argc, char **argv) {
     std::string path = "test_program.txt"; // файл для теста
@@ -63,6 +60,11 @@ int main(int argc, char **argv) {
             poliz_generator.generate(root);
             poliz_generator.print();
             std::cout << "✅ POLIZ generation complete.\n";
+
+            std::cout << "\n=== Starting Program Interpretation ===\n";
+            runner::Interpreter interp(poliz_generator.get_code());
+            interp.run();
+            std::cout << "✅ Program interpretation complete.\n";
         } else {
             std::cerr << "❌ Semantic checks failed. Stopping compilation.\n";
             // В случае ошибки root будет удален ниже, если не null
