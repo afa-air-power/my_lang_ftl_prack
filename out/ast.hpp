@@ -13,6 +13,8 @@ namespace ast {
 enum class NodeType {
     TERMINAL,
     TOK_PROGRAM,
+    TOK_PRINT,
+    TOK_INPUT,
     TOK_ID,
     TOK_IDREST,
     TOK_DECLARATIONLIST,

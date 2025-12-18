@@ -223,6 +223,8 @@ private:
                 else if (kw == "for") t = parser::TokenType::TOK_FOR;
                 else if (kw == "return") t = parser::TokenType::TOK_RETURN;
                 else if (kw == "class") t = parser::TokenType::TOK_CLASS;
+                else if (kw == "print") t = parser::TokenType::TOK_PRINT;
+                else if (kw == "input") t = parser::TokenType::TOK_INPUT;
                 automaton.insert(kw, t);
             }
         }

@@ -1889,6 +1889,10 @@ ast::AstNode* TOK_ATOM() {
     ast::TOK_ATOMNode* node = new ast::TOK_ATOMNode();
     node->line = current_token.line;
     node->col = current_token.col;
+    if (current == TokenType::TOK_PRINT) {
+        node->add_child(TOK_INO());
+        return node;
+    }
 
     if (current == TokenType::IDENTIFIER) {
         ast::AstNode* child_tok_id = TOK_ID();
