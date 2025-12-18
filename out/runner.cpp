@@ -454,8 +454,7 @@ namespace runner {
 
             case poliz::OpType::RET: {
                 if (stack.empty()) {
-                    std::cerr << "❌ Runtime Error: Return with empty call stack" << std::endl;
-                    return false;
+                    return 1;
                 }
                 pc = static_cast<int>(stack.back());
                 stack.pop_back();

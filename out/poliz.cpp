@@ -395,12 +395,13 @@ namespace poliz {
             return left;
         }
 
+
         // Обработка функций (например, print)
         if (nodename.find("INO") != std::string::npos || nodename.find("POSTFIX") != std::string::npos) {
             // Поиск идентификатора функции и аргументов
             for (auto *c: node->children) {
                 if (auto *tn = dynamic_cast<ast::TerminalNode *>(c)) {
-                    if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                    if (tn->token_type == parser::TokenType::TOK_PRINT) {
                         std::string func_name = tn->value;
 
                         if (func_name == "print") {
