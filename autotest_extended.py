@@ -352,6 +352,7 @@ int main() {
 int main() {
     int result;
     result = factorial(5);
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["call", "ret"],

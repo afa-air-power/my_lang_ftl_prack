@@ -1,5 +1,6 @@
-int main(){
-   int x=5;
-   print(x);
-   return 2;
+int main() {
+    int result = 7;
+    print(5);
+    print(result);
+    return 0;
 }

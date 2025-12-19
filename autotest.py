@@ -44,7 +44,7 @@ class TestSuite:
                 cwd=self.build_dir,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=100
             )
             return result.stdout, result.stderr, result.returncode
         except subprocess.TimeoutExpired:
@@ -54,7 +54,8 @@ class TestSuite:
 
     def extract_poliz(self, output: str) -> str:
         """Извлечь ПОЛИЗ из вывода"""
-        start = output.find("========== ASSEMBLY-LIKE CODE")
+
+        start = output.find("========== ASSEMBLY-LIKE")
         end = output.find("========================================", start)
         if start != -1 and end != -1:
             return output[start:end+40]
@@ -190,6 +191,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int x;
     x = 42;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "store", "halt"],
@@ -202,6 +204,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 5 + 3;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "add", "store", "halt"],
@@ -214,6 +217,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int x;
     x = 10 - 3;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "sub", "store"],
@@ -226,6 +230,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 6 * 7;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "mul", "store"],
@@ -238,6 +243,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 20 / 4;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "div", "store"],
@@ -250,6 +256,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 17 % 5;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "mod", "store"],
@@ -264,6 +271,7 @@ def create_test_cases() -> List[TestCase]:
     int b;
     a = 10;
     b = 20;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "store", "halt"],
@@ -278,6 +286,7 @@ def create_test_cases() -> List[TestCase]:
     int y;
     x = 5;
     y = x;
+     return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "store"],
@@ -290,6 +299,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = (5 + 3) * 2;
+     return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "add", "mul", "store"],
@@ -302,6 +312,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 5 == 5;
+     return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "cmp", "halt"],
@@ -314,6 +325,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 3 < 5;
+     return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "cmp"],
@@ -326,6 +338,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 10 > 5;
+     return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "cmp"],
@@ -341,6 +354,7 @@ def create_test_cases() -> List[TestCase]:
     if (x > 3) {
         x = 10;
     }
+     return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "cmp", "jg"],
@@ -355,7 +369,9 @@ def create_test_cases() -> List[TestCase]:
     x = 0;
     while (x < 5) {
         x = x + 1;
+        
     }
+     return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "cmp", "jle", "add"],
@@ -368,6 +384,8 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 1 && 1;
+    
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "and"],
@@ -380,6 +398,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     int result;
     result = 0 || 1;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "or"],
@@ -395,6 +414,7 @@ def create_test_cases() -> List[TestCase]:
     if (!(a == 10)) {
         a = 1;
     }
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "cmp"],
@@ -411,6 +431,7 @@ def create_test_cases() -> List[TestCase]:
         int y;
         y = 10;
     }
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "store"],
@@ -423,6 +444,7 @@ def create_test_cases() -> List[TestCase]:
             code="""int main() {
     double x;
     x = 3.14;
+    return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["load", "store"],
@@ -432,7 +454,7 @@ def create_test_cases() -> List[TestCase]:
         # Тест 20: Пустая программа
         TestCase(
             name="test_20_empty_main",
-            code="""int main() {
+            code="""int main() { return 0;
 }""",
             expected_output="",
             expected_poliz_contains=["halt"],

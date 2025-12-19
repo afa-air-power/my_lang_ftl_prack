@@ -32,6 +32,8 @@ inline parser::TokenType symbol_to_token_type(const std::string& sym) {
         {"(", parser::TokenType::TOK_LPAREN},
         {")", parser::TokenType::TOK_RPAREN},
         {"[", parser::TokenType::TOK_LBRACKET},
+        {"||", parser::TokenType::TOK_OR},
+        {"or", parser::TokenType::TOK_OR},
         {".", parser::TokenType::TOK_DOT},
         {"]", parser::TokenType::TOK_RBRACKET},
         {"{", parser::TokenType::TOK_LBRACE},
@@ -40,6 +42,8 @@ inline parser::TokenType symbol_to_token_type(const std::string& sym) {
         {",", parser::TokenType::TOK_COMMA},
         {"+", parser::TokenType::TOK_PLUS},
         {"-", parser::TokenType::TOK_MINUS},
+        {"/", parser::TokenType::TOK_SLASH},
+        {"%", parser::TokenType::TOK_PERCENT},
         {"*", parser::TokenType::TOK_STAR},
         {"=", parser::TokenType::TOK_EQUAL},
         {"<", parser::TokenType::TOK_LT},
@@ -221,6 +225,7 @@ private:
                 else if (kw == "vector") t = parser::TokenType::TOK_VECTOR;
                 else if (kw == "while") t = parser::TokenType::TOK_WHILE;
                 else if (kw == "for") t = parser::TokenType::TOK_FOR;
+                else if (kw == "or") t = parser::TokenType::TOK_OR;
                 else if (kw == "return") t = parser::TokenType::TOK_RETURN;
                 else if (kw == "class") t = parser::TokenType::TOK_CLASS;
                 else if (kw == "print") t = parser::TokenType::TOK_PRINT;

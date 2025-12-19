@@ -221,6 +221,7 @@ namespace poliz {
         std::unordered_map<int, int> hotspots; // Адрес -> счетчик вызовов
         void update_hotspot(int addr);
 
+
         // Вспомогательные методы
         double get_operand_value(const Operand &op);
 
