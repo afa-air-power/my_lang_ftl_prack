@@ -1,0 +1,393 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{amsmath}
+
+\geometry{margin=2.5cm}
+
+% Настройка подсветки синтаксиса
+\lstset{
+    language=C++,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numberstyle=\tiny\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    stepnumber=1,
+    tabsize=4,
+    showspaces=false,
+    showstringspaces=false
+}
+
+\title{Руководство пользователя\\Компилятор языка my\_lang}
+\author{Версия 1.0}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Введение}
+
+Данное руководство описывает процесс использования компилятора языка программирования \texttt{my\_lang}. Компилятор выполняет лексический анализ, синтаксический разбор, семантическую проверку и генерацию промежуточного представления в виде обратной польской записи (POLIZ).
+
+\section{Системные требования}
+
+Для работы компилятора необходимы:
+\begin{itemize}
+    \item Операционная система: Windows, Linux или macOS
+    \item Компилятор C++ с поддержкой стандарта C++20 (GCC, Clang, MSVC)
+    \item CMake версии 3.20 или выше
+    \item Python 3.x (для генерации парсера и лексера)
+    \item GoogleTest (автоматически загружается через CMake)
+\end{itemize}
+
+\section{Установка}
+
+\subsection{Получение исходного кода}
+
+Исходный код проекта должен находиться в директории \texttt{c:\project} (или другой выбранной директории).
+
+\subsection{Сборка проекта}
+
+Для сборки проекта выполните следующие команды:
+
+\begin{lstlisting}[language=bash]
+cd c:\project
+mkdir cmake-build-debug
+cd cmake-build-debug
+cmake ..
+cmake --build .
+\end{lstlisting}
+
+При сборке автоматически выполняются следующие действия:
+\begin{itemize}
+    \item Генерация парсера из файла \texttt{grammar.txt}
+    \item Генерация лексера из файла \texttt{system\_reserved\_identifiers.txt}
+    \item Компиляция всех исходных файлов
+    \item Сборка исполняемого файла \texttt{my\_lang\_ftl\_prak.exe}
+\end{itemize}
+
+\section{Использование компилятора}
+
+\subsection{Базовое использование}
+
+Для компиляции программы на языке \texttt{my\_lang} используйте следующую команду:
+
+\begin{lstlisting}[language=bash]
+./my_lang_ftl_prak.exe <путь_к_файлу>
+\end{lstlisting}
+
+Если путь к файлу не указан, по умолчанию используется файл \texttt{test\_program.txt}.
+
+\subsection{Пример использования}
+
+\begin{lstlisting}[language=bash]
+./my_lang_ftl_prak.exe test_program.txt
+\end{lstlisting}
+
+\subsection{Выходные данные}
+
+Компилятор выводит следующую информацию:
+\begin{itemize}
+    \item Путь к обрабатываемому файлу
+    \item Результаты семантической проверки
+    \item Результаты оптимизации AST
+    \item Сгенерированный POLIZ код
+\end{itemize}
+
+При успешной компиляции вы увидите сообщения:
+\begin{itemize}
+    \item \texttt{✅ Semantic checks passed.}
+    \item \texttt{✅ AST optimization complete.}
+    \item \texttt{✅ POLIZ generation complete.}
+\end{itemize}
+
+При ошибках компиляции выводится соответствующее сообщение с описанием проблемы.
+
+\section{Синтаксис языка my\_lang}
+
+\subsection{Типы данных}
+
+Язык поддерживает следующие базовые типы:
+\begin{itemize}
+    \item \texttt{int} --- целые числа
+    \item \texttt{float} --- числа с плавающей точкой одинарной точности
+    \item \texttt{double} --- числа с плавающей точкой двойной точности
+    \item \texttt{string} --- строки
+    \item \texttt{vector<T>} --- векторы (динамические массивы) элементов типа T
+\end{itemize}
+
+\subsection{Объявление переменных}
+
+Переменные объявляются следующим образом:
+
+\begin{lstlisting}
+int x;
+double y = 3.14;
+string name = "Hello";
+vector<int> numbers;
+\end{lstlisting}
+
+\subsection{Объявление функций}
+
+Функции объявляются с указанием типа возвращаемого значения:
+
+\begin{lstlisting}
+int add(int a, int b) {
+    return a + b;
+}
+\end{lstlisting}
+
+\subsection{Объявление классов}
+
+Классы объявляются с помощью ключевого слова \texttt{class}:
+
+\begin{lstlisting}
+class Person {
+    int age;
+    string name;
+    
+    void print() {
+        print(name, age);
+    }
+};
+\end{lstlisting}
+
+\subsection{Управляющие конструкции}
+
+\subsubsection{Условный оператор if}
+
+\begin{lstlisting}
+if (x > 0) {
+    print("Positive");
+} else {
+    print("Non-positive");
+}
+\end{lstlisting}
+
+\subsubsection{Цикл while}
+
+\begin{lstlisting}
+while (i < 10) {
+    i = i + 1;
+}
+\end{lstlisting}
+
+\subsubsection{Цикл for}
+
+\begin{lstlisting}
+for (i < 10) {
+    i = i + 1;
+}
+\end{lstlisting}
+
+\subsubsection{Оператор after}
+
+Оператор \texttt{after} позволяет выполнить код после завершения цикла:
+
+\begin{lstlisting}
+after (i < 10) {
+    print("Loop finished");
+}
+\end{lstlisting}
+
+\subsection{Операторы}
+
+\subsubsection{Арифметические операторы}
+
+\begin{itemize}
+    \item \texttt{+} --- сложение
+    \item \texttt{-} --- вычитание
+    \item \texttt{*} --- умножение
+    \item \texttt{/} --- деление
+    \item \texttt{\%} --- остаток от деления
+\end{itemize}
+
+\subsubsection{Операторы сравнения}
+
+\begin{itemize}
+    \item \texttt{==} --- равно
+    \item \texttt{!=} --- не равно
+    \item \texttt{<} --- меньше
+    \item \texttt{>} --- больше
+    \item \texttt{<=} --- меньше или равно
+    \item \texttt{>=} --- больше или равно
+\end{itemize}
+
+\subsubsection{Логические операторы}
+
+\begin{itemize}
+    \item \texttt{\&\&} --- логическое И
+    \item \texttt{||} --- логическое ИЛИ
+    \item \texttt{!} --- логическое НЕ
+    \item \texttt{or} --- альтернативная форма ИЛИ
+\end{itemize}
+
+\subsubsection{Операторы присваивания}
+
+\begin{itemize}
+    \item \texttt{=} --- присваивание
+    \item \texttt{+=} --- сложение с присваиванием
+    \item \texttt{-=} --- вычитание с присваиванием
+    \item \texttt{*=} --- умножение с присваиванием
+    \item \texttt{/=} --- деление с присваиванием
+    \item \texttt{\%=} --- остаток с присваиванием
+\end{itemize}
+
+\subsubsection{Инкремент и декремент}
+
+\begin{itemize}
+    \item \texttt{++} --- инкремент (префиксный и постфиксный)
+    \item \texttt{--} --- декремент (префиксный и постфиксный)
+\end{itemize}
+
+\subsection{Встроенные функции}
+
+\subsubsection{print}
+
+Функция \texttt{print} выводит значения на экран:
+
+\begin{lstlisting}
+print("Hello, World!");
+print(x, y, z);
+\end{lstlisting}
+
+\subsubsection{input}
+
+Функция \texttt{input} предназначена для ввода данных (в текущей реализации может быть не полностью реализована).
+
+\subsection{Доступ к полям объектов}
+
+Доступ к полям объектов осуществляется через точку:
+
+\begin{lstlisting}
+person.name = "Alice";
+person.age = 25;
+\end{lstlisting}
+
+\subsection{Доступ к элементам массивов}
+
+Доступ к элементам массивов и векторов осуществляется через квадратные скобки:
+
+\begin{lstlisting}
+vector<int> arr;
+arr[0] = 10;
+int value = arr[0];
+\end{lstlisting}
+
+\subsection{Комментарии}
+
+Язык поддерживает однострочные и многострочные комментарии:
+
+\begin{lstlisting}
+// Однострочный комментарий
+
+/* Многострочный
+   комментарий */
+\end{lstlisting}
+
+\section{Пример программы}
+
+Ниже приведен пример программы на языке \texttt{my\_lang}:
+
+\begin{lstlisting}
+class human {
+    int id;
+    string name;
+    int hp;
+    double money;
+    
+    void update() {
+        hp = hp - 1;
+    }
+};
+
+int main() {
+    human p0;
+    p0.id = 0;
+    p0.name = "Alice";
+    p0.hp = 100;
+    p0.money = 50.0;
+    
+    int day = 0;
+    while (day < 10) {
+        p0.update();
+        print("Day:", day, "HP:", p0.hp);
+        day = day + 1;
+    }
+    
+    return 0;
+}
+\end{lstlisting}
+
+\section{Обработка ошибок}
+
+Компилятор выводит сообщения об ошибках в следующем формате:
+
+\begin{itemize}
+    \item Синтаксические ошибки: указывается строка и позиция, где обнаружена ошибка
+    \item Семантические ошибки: указывается тип ошибки и контекст
+\end{itemize}
+
+Пример сообщения об ошибке:
+
+\begin{verbatim}
+❌ Parsing failed (AST root is null).
+❌ Semantic checks failed. Stopping compilation.
+\end{verbatim}
+
+\section{Ограничения}
+
+В текущей версии компилятора существуют следующие ограничения:
+
+\begin{itemize}
+    \item Генерация POLIZ выполняется, но интерпретатор для выполнения POLIZ не реализован
+    \item Некоторые встроенные функции могут быть не полностью реализованы
+    \item Оптимизация AST ограничена простыми случаями
+\end{itemize}
+
+\section{Тестирование}
+
+Для запуска тестов используйте команду:
+
+\begin{lstlisting}[language=bash]
+ctest
+\end{lstlisting}
+
+Или напрямую:
+
+\begin{lstlisting}[language=bash]
+./my_lang_tests.exe
+\end{lstlisting}
+
+\section{Часто задаваемые вопросы}
+
+\subsection{Как добавить новое ключевое слово?}
+
+Добавьте ключевое слово в файл \texttt{system\_reserved\_identifiers.txt} и пересоберите проект.
+
+\subsection{Как изменить грамматику языка?}
+
+Отредактируйте файл \texttt{grammar.txt} и пересоберите проект. Парсер будет автоматически перегенерирован.
+
+\subsection{Где хранятся сгенерированные файлы?}
+
+Все сгенерированные файлы (парсер, лексер) находятся в директории \texttt{out/}.
+
+\section{Заключение}
+
+Данное руководство описывает основные возможности компилятора языка \texttt{my\_lang}. Для получения дополнительной информации о внутреннем устройстве компилятора обратитесь к руководству программиста.
+
+\end{document}
+
