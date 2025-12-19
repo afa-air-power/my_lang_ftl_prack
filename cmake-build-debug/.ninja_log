@@ -1,0 +1,19 @@
+# ninja log v6
+1	19	1766132111554669640	CMakeFiles/copy_test_program	a0758f5476b1f69c
+1	19	1766132111554669640	/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/CMakeFiles/copy_test_program	a0758f5476b1f69c
+20	2105	1766132111574507222	CMakeFiles/my_lang_ftl_prak.dir/out/ast.cpp.o	c8749950df9305f2
+22	2824	1766132111577163895	CMakeFiles/my_lang_ftl_prak.dir/out/command_tree.cpp.o	992dd981953526f5
+20	2939	1766132111574256995	CMakeFiles/my_lang_ftl_prak.dir/out/ast_utils.cpp.o	406a14dfd85a1cb9
+19	3026	1766132111573550018	CMakeFiles/my_lang_ftl_prak.dir/main.cpp.o	110b34006e1fcc27
+22	3354	1766132111575690583	CMakeFiles/my_lang_ftl_prak.dir/out/ast_functiontree.cpp.o	f875366fc4d4f1ff
+19	3356	1766132111573914694	CMakeFiles/my_lang_ftl_prak.dir/out/parser.cpp.o	f5db2a39c2a802b4
+20	3362	1766132111575168627	CMakeFiles/my_lang_ftl_prak.dir/out/runner.cpp.o	eceffe67f09666c0
+20	3525	1766132111574873692	CMakeFiles/my_lang_ftl_prak.dir/out/poliz.cpp.o	61ebeb4c39f738b4
+21	3578	1766132111575463512	CMakeFiles/my_lang_ftl_prak.dir/out/ast_check.cpp.o	6aa6be4f903cb0e4
+3578	3740	1766132115131864407	my_lang_ftl_prak	4ac18f292d7e4b40
+3	23	1766132266660491531	CMakeFiles/copy_test_program	a0758f5476b1f69c
+3	23	1766132266660491531	/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/CMakeFiles/copy_test_program	a0758f5476b1f69c
+4	34	1766132362628423092	CMakeFiles/copy_test_program	a0758f5476b1f69c
+4	34	1766132362628423092	/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/CMakeFiles/copy_test_program	a0758f5476b1f69c
+3	29	1766132366563044753	CMakeFiles/copy_test_program	a0758f5476b1f69c
+3	29	1766132366563044753	/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/CMakeFiles/copy_test_program	a0758f5476b1f69c

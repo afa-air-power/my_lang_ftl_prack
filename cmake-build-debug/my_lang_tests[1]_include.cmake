@@ -1,0 +1,5 @@
+if(EXISTS "/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/my_lang_tests[1]_tests.cmake")
+  include("/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/my_lang_tests[1]_tests.cmake")
+else()
+  add_test(my_lang_tests_NOT_BUILT my_lang_tests_NOT_BUILT)
+endif()

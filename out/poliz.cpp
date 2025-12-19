@@ -92,14 +92,22 @@ namespace poliz {
                     if (tn->token_type == parser::TokenType::NUMBER) {
                         int reg = alloc_register();
                         Operand dst(reg);
-                        Operand src(OperandType::IMMEDIATE, tn->value);
+                        Operand src(OperandType::IMMEDIATE, tn->value, false);  // is_string = false
                         emit(Instruction(OpType::LOAD, dst, src));
                         return dst;
                     }
                     if (tn->token_type == parser::TokenType::STRING) {
                         int reg = alloc_register();
                         Operand dst(reg);
-                        Operand src(OperandType::IMMEDIATE, tn->value);
+                        // Удаляем кавычки из строкового литерала
+                        std::string str_value = tn->value;
+                        if (str_value.length() >= 2) {
+                            if ((str_value[0] == '"' && str_value[str_value.length()-1] == '"') ||
+                                (str_value[0] == '\'' && str_value[str_value.length()-1] == '\'')) {
+                                str_value = str_value.substr(1, str_value.length() - 2);
+                            }
+                        }
+                        Operand src(OperandType::IMMEDIATE, str_value, true);  // is_string = true
                         emit(Instruction(OpType::LOAD, dst, src));
                         return dst;
                     }
@@ -624,9 +632,18 @@ namespace poliz {
             ast::AstNode *else_part = nullptr;
 
             for (auto *c: node->children) {
-                if (c->to_string().find("EXPR") != std::string::npos && !cond) cond = c;
-                else if (c->to_string() == "TOK_COMPOUNDSTMT" && !then_stmt) then_stmt = c;
-                else if (c->to_string() == "TOK_ELSEPART") else_part = c;
+                if (c->to_string().find("EXPR") != std::string::npos && !cond) {
+                    cond = c;
+                }
+                else if (!then_stmt) {
+                    if (c->to_string() == "TOK_COMPOUNDSTMT") {
+                        then_stmt = c;
+                    } else if (c->to_string() == "TOK_STATEMENT") {
+                        // The statement may contain a compound statement
+                        then_stmt = c;
+                    }
+                }
+                if (c->to_string() == "TOK_ELSEPART") else_part = c;
             }
 
             if (cond && then_stmt) {
@@ -649,6 +666,7 @@ namespace poliz {
                 emit_label(label_end);
                 free_register(cond_reg.reg_num);
             }
+            return;
         }
 
         // WHILE statement
@@ -657,8 +675,17 @@ namespace poliz {
             ast::AstNode *body = nullptr;
 
             for (auto *c: node->children) {
-                if (c->to_string().find("EXPR") != std::string::npos) cond = c;
-                else if (c->to_string() == "TOK_COMPOUNDSTMT") body = c;
+                if (c->to_string().find("EXPR") != std::string::npos && !cond) {
+                    cond = c;
+                }
+                else if (!body) {
+                    if (c->to_string() == "TOK_COMPOUNDSTMT") {
+                        body = c;
+                    } else if (c->to_string() == "TOK_STATEMENT") {
+                        // The statement may contain a compound statement
+                        body = c;
+                    }
+                }
             }
 
             if (cond && body) {
@@ -676,6 +703,7 @@ namespace poliz {
                 emit_label(label_end);
                 free_register(cond_reg.reg_num);
             }
+            return;
         }
 
         // Variable declaration with initialization

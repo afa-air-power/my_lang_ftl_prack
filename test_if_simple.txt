@@ -1,0 +1,7 @@
+int main() {
+    int x = 5;
+    if(x<8) { print("yes"); }
+    if(x>8) {print("error");}
+    return 0;
+}
+

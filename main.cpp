@@ -8,7 +8,6 @@
 #include "out/poliz.hpp"
 #include "out/runner.hpp"
 #include "out/ast_check.hpp"
-#include "out/ast_functiontree.hpp"
 
 extern std::string current_file_path;
 
@@ -66,7 +65,6 @@ int main(int argc, char **argv) {
             poliz_generator.generate(root);
             poliz_generator.print();
             std::cout << "✅ POLIZ generation complete.\n";
-            return 0;
 
             std::cout << "\n=== Starting Program Interpretation ===\n";
             runner::Interpreter interp(poliz_generator.get_code());
@@ -82,6 +80,6 @@ int main(int argc, char **argv) {
         // Продолжаем выполнение, чтобы удалить root, если он был создан
     }
 
-    if (root) delete root; // Очистка памяти AST
+    delete root; // Очистка памяти AST
     return 0;
 }

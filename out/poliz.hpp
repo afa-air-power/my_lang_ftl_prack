@@ -87,10 +87,11 @@ namespace poliz {
         std::string value; // Значение (имя, число, метка)
         int reg_num = -1; // Номер регистра (-1 если не регистр)
         int offset = 0; // Смещение для MEMORY
+        bool is_string = false; // Флаг: это строка?
 
         Operand() = default;
 
-        Operand(OperandType t, const std::string &v) : type(t), value(v) {
+        Operand(OperandType t, const std::string &v, bool str = false) : type(t), value(v), is_string(str) {
         }
 
         Operand(int reg) : type(OperandType::REGISTER), reg_num(reg) {

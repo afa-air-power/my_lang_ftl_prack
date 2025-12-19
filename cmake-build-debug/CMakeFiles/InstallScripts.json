@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/cmake_install.cmake",
+		"/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/_deps/googletest-build/cmake_install.cmake",
+		"/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/_deps/googletest-build/googlemock/cmake_install.cmake",
+		"/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/_deps/googletest-build/googletest/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

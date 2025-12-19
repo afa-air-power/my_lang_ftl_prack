@@ -1,0 +1,3 @@
+/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/_deps/googletest-subbuild/CMakeFiles/googletest-populate.dir
+/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/_deps/googletest-subbuild/CMakeFiles/edit_cache.dir
+/home/afa/CLionProjects/my_lang_ftl_prak/cmake-build-debug/_deps/googletest-subbuild/CMakeFiles/rebuild_cache.dir

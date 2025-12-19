@@ -1,0 +1,8 @@
+
+int main() {
+    int result = 7*;
+    print(5);
+    print('Hello, World!');
+    print(result);
+    return 0;
+}

@@ -18,10 +18,18 @@ private:
     std::vector<poliz::Instruction> code;
     std::unordered_map<std::string, int> labels;
 
-    // Регистры и память
+    // Регистры и память для чисел
     std::vector<double> registers;
     std::unordered_map<std::string, double> memory;
     std::vector<double> stack;
+
+    // Регистры и память для строк
+    std::vector<std::string> string_registers;
+    std::unordered_map<std::string, std::string> string_memory;
+    std::vector<std::string> string_stack;
+
+    // Отслеживание типов в регистрах (true = строка, false = число)
+    std::vector<bool> register_is_string;
 
     // Флаги процессора
     bool zero_flag = false;
@@ -39,6 +47,10 @@ private:
     void set_operand_value(const poliz::Operand& op, double value);
     void update_flags(double result);
     
+    // Методы для работы со строками
+    std::string get_string_operand_value(const poliz::Operand& op);
+    void set_string_operand_value(const poliz::Operand& op, const std::string& value);
+
     // Вывод инструкций
     void print_instruction(const poliz::Instruction& instr) const;
 

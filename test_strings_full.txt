@@ -1,0 +1,14 @@
+int main() {
+    print('=== String Support Test ===');
+    print('Hello, ');
+    print('World');
+    print('!');
+    print(' ');
+    print('Numbers: ');
+    print(42);
+    print(' and ');
+    print(3.14);
+    print('Done');
+    return 0;
+}
+
