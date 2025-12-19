@@ -18,7 +18,10 @@ namespace runner {
     Interpreter::Interpreter(const std::vector<poliz::Instruction>& instr_code)
         : code(instr_code), pc(0) {
         registers.resize(16, 0.0);  // r0-r15
+        string_registers.resize(16, "");  // String registers
+        register_is_string.resize(16, false);  // Register type tracking
         stack.reserve(1024);         // Stack capacity
+        string_stack.reserve(1024);  // String stack capacity
 
         // Build label table for jumps
         for (size_t i = 0; i < code.size(); i++) {
@@ -65,9 +68,45 @@ namespace runner {
         if (op.type == poliz::OperandType::REGISTER) {
             if (op.reg_num >= 0 && op.reg_num < 16) {
                 registers[op.reg_num] = value;
+                register_is_string[op.reg_num] = false;  // Отметить как число
             }
         } else if (op.type == poliz::OperandType::VARIABLE) {
             memory[op.value] = value;
+        }
+    }
+
+    std::string Interpreter::get_string_operand_value(const poliz::Operand& op) {
+        switch (op.type) {
+            case poliz::OperandType::REGISTER:
+                if (op.reg_num >= 0 && op.reg_num < 16) {
+                    return string_registers[op.reg_num];
+                }
+                break;
+
+            case poliz::OperandType::IMMEDIATE:
+                // Строковый литерал передается в поле value
+                return op.value;
+
+            case poliz::OperandType::VARIABLE:
+                if (string_memory.find(op.value) != string_memory.end()) {
+                    return string_memory[op.value];
+                }
+                return "";
+
+            default:
+                break;
+        }
+        return "";
+    }
+
+    void Interpreter::set_string_operand_value(const poliz::Operand& op, const std::string& value) {
+        if (op.type == poliz::OperandType::REGISTER) {
+            if (op.reg_num >= 0 && op.reg_num < 16) {
+                string_registers[op.reg_num] = value;
+                register_is_string[op.reg_num] = true;  // Отметить как строка
+            }
+        } else if (op.type == poliz::OperandType::VARIABLE) {
+            string_memory[op.value] = value;
         }
     }
 
@@ -162,22 +201,39 @@ namespace runner {
                 break;
 
             case poliz::OpType::LOAD: {
-                double val = get_operand_value(instr.src1);
-                set_operand_value(instr.dst, val);
+                // Проверяем тип данных
+                if (instr.src1.is_string) {
+                    std::string val = get_string_operand_value(instr.src1);
+                    set_string_operand_value(instr.dst, val);
+                } else {
+                    double val = get_operand_value(instr.src1);
+                    set_operand_value(instr.dst, val);
+                }
                 pc++;
                 break;
             }
 
             case poliz::OpType::STORE: {
-                double val = get_operand_value(instr.src1);
-                set_operand_value(instr.dst, val);
+                // Проверяем тип данных
+                if (instr.src1.is_string) {
+                    std::string val = get_string_operand_value(instr.src1);
+                    set_string_operand_value(instr.dst, val);
+                } else {
+                    double val = get_operand_value(instr.src1);
+                    set_operand_value(instr.dst, val);
+                }
                 pc++;
                 break;
             }
 
             case poliz::OpType::MOV: {
-                double val = get_operand_value(instr.src1);
-                set_operand_value(instr.dst, val);
+                if (instr.src1.is_string) {
+                    std::string val = get_string_operand_value(instr.src1);
+                    set_string_operand_value(instr.dst, val);
+                } else {
+                    double val = get_operand_value(instr.src1);
+                    set_operand_value(instr.dst, val);
+                }
                 pc++;
                 break;
             }
@@ -454,7 +510,7 @@ namespace runner {
 
             case poliz::OpType::RET: {
                 if (stack.empty()) {
-                    return 1;
+                    return false;  // End of program
                 }
                 pc = static_cast<int>(stack.back());
                 stack.pop_back();
@@ -480,12 +536,28 @@ namespace runner {
             }
 
             case poliz::OpType::PRINT: {
-                double val = get_operand_value(instr.dst);
-                // Format output
-                if (val == static_cast<long>(val)) {
-                    std::cout << static_cast<long>(val);
-                } else {
+                // Проверяем тип данных - сначала по флагу is_string, потом по типу регистра
+                bool is_str = instr.dst.is_string;
+
+                // Если это регистр, проверяем флаг регистра
+                if (instr.dst.type == poliz::OperandType::REGISTER &&
+                    instr.dst.reg_num >= 0 && instr.dst.reg_num < 16) {
+                    is_str = register_is_string[instr.dst.reg_num];
+                }
+
+                if (is_str) {
+                    // Печать строки
+                    std::string val = get_string_operand_value(instr.dst);
                     std::cout << val;
+                } else {
+                    // Печать числа
+                    double val = get_operand_value(instr.dst);
+                    // Format output
+                    if (val == static_cast<long>(val)) {
+                        std::cout << static_cast<long>(val);
+                    } else {
+                        std::cout << val;
+                    }
                 }
                 pc++;
                 break;

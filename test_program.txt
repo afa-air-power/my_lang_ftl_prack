@@ -1,6 +1,15 @@
+int f(int x) {
+    return x*x;
+}
+
 int main() {
     int result = 7;
     print(5);
+    print('Hello, World!');
     print(result);
+    int x=6;
+    if(x<8) { print("tmp"); }
+    if(x>7) {print("tmdv");}
+    while(x<6){x+=1;}
     return 0;
 }
