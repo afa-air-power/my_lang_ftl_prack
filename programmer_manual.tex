@@ -1,0 +1,465 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\geometry{margin=2.5cm}
+
+% Настройка подсветки синтаксиса
+\lstset{
+    language=C++,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numberstyle=\tiny\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    stepnumber=1,
+    tabsize=4,
+    showspaces=false,
+    showstringspaces=false
+}
+
+\title{Руководство программиста\\Компилятор языка my\_lang}
+\author{Версия 1.0}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Введение}
+
+Данное руководство описывает архитектуру компилятора языка \texttt{my\_lang} и предназначено для разработчиков, желающих расширить или модифицировать компилятор. Компилятор реализован на C++20 и использует автоматическую генерацию парсера и лексера на основе описания грамматики.
+
+\section{Архитектура компилятора}
+
+Компилятор состоит из следующих основных компонентов:
+
+\begin{enumerate}
+    \item \textbf{Лексер (Lexer)} --- разбивает исходный код на токены
+    \item \textbf{Парсер (Parser)} --- строит абстрактное синтаксическое дерево (AST)
+    \item \textbf{Семантический анализатор} --- проверяет корректность программы
+    \item \textbf{Оптимизатор AST} --- выполняет простые оптимизации
+    \item \textbf{Генератор POLIZ} --- создает промежуточное представление в виде обратной польской записи
+\end{enumerate}
+
+\subsection{Структура проекта}
+
+\begin{verbatim}
+project/
+├── main.cpp                    # Точка входа
+├── CMakeLists.txt              # Файл сборки CMake
+├── grammar.txt                 # Описание грамматики
+├── lexer_generator.py          # Генератор лексера
+├── parser_generator.py         # Генератор парсера
+├── system_reserved_identifiers.txt  # Зарезервированные слова
+└── out/                        # Сгенерированные файлы
+    ├── lexer.hpp              # Заголовок лексера
+    ├── parser.hpp             # Заголовок парсера
+    ├── parser.cpp             # Реализация парсера
+    ├── ast.hpp                # Определения AST
+    ├── ast.cpp                # Реализация AST
+    ├── ast_utils.hpp          # Утилиты AST
+    ├── ast_utils.cpp          # Реализация утилит
+    ├── poliz.hpp              # Заголовок генератора POLIZ
+    ├── poliz.cpp              # Реализация генератора POLIZ
+    └── keywords.hpp           # Определения токенов
+\end{verbatim}
+
+\section{Лексер}
+
+\subsection{Обзор}
+
+Лексер реализован в файле \texttt{out/lexer.hpp} и использует алгоритм Ахо-Корасика для распознавания ключевых слов. Лексер разбивает исходный код на токены следующих типов:
+
+\begin{itemize}
+    \item Ключевые слова (\texttt{int}, \texttt{if}, \texttt{while}, и т.д.)
+    \item Идентификаторы
+    \item Числовые литералы
+    \item Строковые литералы
+    \item Символы и операторы
+\end{itemize}
+
+\subsection{Класс Lexer}
+
+Основной класс лексера:
+
+\begin{lstlisting}
+namespace lexer {
+    class Lexer {
+    public:
+        Lexer(const std::string& text, 
+              const std::string& keywords_file);
+        Token next();
+        std::vector<Token> get_all_tokens();
+    };
+}
+\end{lstlisting}
+
+\subsection{Структура Token}
+
+Каждый токен содержит следующую информацию:
+
+\begin{lstlisting}
+struct Token {
+    parser::TokenType type;  // Тип токена
+    std::string name;        // Имя токена
+    std::string value;       // Значение токена
+    size_t line;             // Номер строки
+    size_t col;              // Номер столбца
+};
+\end{lstlisting}
+
+\subsection{Алгоритм Ахо-Корасика}
+
+Лексер использует алгоритм Ахо-Корасика для эффективного распознавания ключевых слов. Алгоритм строит конечный автомат, который позволяет находить все вхождения ключевых слов за один проход по тексту.
+
+\subsection{Обработка комментариев}
+
+Лексер автоматически пропускает:
+\begin{itemize}
+    \item Однострочные комментарии (\texttt{// ...})
+    \item Многострочные комментарии (\texttt{/* ... */})
+    \item Пробельные символы
+\end{itemize}
+
+\section{Парсер}
+
+\subsection{Обзор}
+
+Парсер реализован в файлах \texttt{out/parser.hpp} и \texttt{out/parser.cpp}. Парсер использует рекурсивный спуск для построения AST на основе грамматики, описанной в файле \texttt{grammar.txt}.
+
+\subsection{Генерация парсера}
+
+Парсер автоматически генерируется скриптом \texttt{parser\_generator.py} на основе файла \texttt{grammar.txt}. Грамматика описывается в формате BNF (Backus-Naur Form).
+
+\subsection{Основные функции парсера}
+
+Главная функция парсера:
+
+\begin{lstlisting}
+namespace parser {
+    ast::AstNode* parse(lexer::Lexer& lexer, 
+                        const std::string& path);
+}
+\end{lstlisting}
+
+Для каждого нетерминала грамматики генерируется функция вида \texttt{TOK\_<NONTERMINAL>()}, которая возвращает соответствующий узел AST.
+
+\subsection{Обработка ошибок}
+
+Парсер использует исключения для обработки ошибок:
+
+\begin{lstlisting}
+struct ParseError : public std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+\end{lstlisting}
+
+При обнаружении синтаксической ошибки выбрасывается исключение \texttt{ParseError} с описанием проблемы.
+
+\section{Абстрактное синтаксическое дерево (AST)}
+
+\subsection{Обзор}
+
+AST реализовано в файлах \texttt{out/ast.hpp} и \texttt{out/ast.cpp}. Дерево состоит из узлов различных типов, соответствующих конструкциям языка.
+
+\subsection{Базовый класс AstNode}
+
+Все узлы AST наследуются от базового класса:
+
+\begin{lstlisting}
+class AstNode {
+public:
+    NodeType type;
+    int line;
+    int col;
+    std::vector<AstNode*> children;
+    
+    virtual ~AstNode();
+    virtual void print(int depth = 0) const;
+    virtual std::string to_string() const;
+    void add_child(AstNode* child);
+};
+\end{lstlisting}
+
+\subsection{Типы узлов}
+
+Узлы AST делятся на два основных типа:
+
+\begin{enumerate}
+    \item \textbf{Терминальные узлы (TerminalNode)} --- представляют токены (идентификаторы, литералы, операторы)
+    \item \textbf{Нетерминальные узлы} --- представляют синтаксические конструкции (выражения, операторы, объявления)
+\end{enumerate}
+
+\subsection{Примеры узлов}
+
+\begin{itemize}
+    \item \texttt{TOK\_PROGRAMNode} --- корневой узел программы
+    \item \texttt{TOK\_DECLARATIONNode} --- объявление переменной или функции
+    \item \texttt{TOK\_EXPRESSIONNode} --- выражение
+    \item \texttt{TOK\_IFSTMTNode} --- условный оператор
+    \item \texttt{TOK\_WHILESTMTNode} --- цикл while
+\end{itemize}
+
+\section{Семантический анализ}
+
+\subsection{Обзор}
+
+Семантический анализ реализован в файле \texttt{out/ast\_utils.cpp}. Функция \texttt{semantic\_check} выполняет проверку корректности программы на уровне семантики.
+
+\subsection{Основная функция}
+
+\begin{lstlisting}
+namespace ast {
+    bool semantic_check(AstNode* root);
+}
+\end{lstlisting}
+
+Функция возвращает \texttt{true}, если семантические проверки пройдены успешно, и \texttt{false} в противном случае.
+
+\subsection{Типы проверок}
+
+Семантический анализатор выполняет следующие проверки:
+
+\begin{itemize}
+    \item Проверка типов в выражениях
+    \item Проверка существования переменных и функций
+    \item Проверка корректности использования операторов
+    \item Проверка области видимости
+\end{itemize}
+
+\section{Оптимизация AST}
+
+\subsection{Обзор}
+
+Оптимизация AST реализована в функции \texttt{optimize\_ast} в файле \texttt{out/ast\_utils.cpp}.
+
+\subsection{Типы оптимизаций}
+
+В текущей реализации выполняются следующие оптимизации:
+
+\begin{itemize}
+    \item \textbf{Constant folding} --- вычисление константных выражений на этапе компиляции
+    \item Простые локальные замены
+\end{itemize}
+
+\subsection{Пример оптимизации}
+
+Выражение \texttt{2 + 3} может быть заменено на \texttt{5} на этапе компиляции.
+
+\section{Генерация POLIZ}
+
+\subsection{Обзор}
+
+Генератор POLIZ реализован в файлах \texttt{out/poliz.hpp} и \texttt{out/poliz.cpp}. POLIZ (Польская Инверсная Запись) --- это промежуточное представление программы, удобное для интерпретации стековой машиной.
+
+\subsection{Класс Poliz}
+
+\begin{lstlisting}
+namespace poliz {
+    class Poliz {
+    private:
+        std::vector<PolizItem> items;
+    public:
+        void generate(ast::AstNode* node);
+        const std::vector<PolizItem>& get_items() const;
+        void print();
+    };
+}
+\end{lstlisting}
+
+\subsection{Типы операций}
+
+Генератор POLIZ поддерживает следующие типы операций:
+
+\begin{itemize}
+    \item \texttt{PUSH\_VAL} --- поместить значение в стек
+    \item \texttt{ADD}, \texttt{SUB}, \texttt{MUL}, \texttt{DIV}, \texttt{MOD} --- арифметические операции
+    \item \texttt{ASSIGN} --- присваивание
+    \item \texttt{EQ}, \texttt{NEQ}, \texttt{LT}, \texttt{GT}, \texttt{LEQ}, \texttt{GEQ} --- операции сравнения
+    \item \texttt{GOTO} --- безусловный переход
+    \item \texttt{JMP\_FALSE} --- условный переход
+    \item \texttt{PRINT} --- вывод
+    \item \texttt{INPUT} --- ввод
+    \item \texttt{MEMBER} --- доступ к полю объекта
+    \item \texttt{CALL} --- вызов функции
+\end{itemize}
+
+\subsection{Структура PolizItem}
+
+\begin{lstlisting}
+struct PolizItem {
+    OpType op;              // Тип операции
+    std::string value;      // Значение (для операндов)
+    int jump_index;         // Индекс перехода (для GOTO)
+};
+\end{lstlisting}
+
+\section{Генераторы кода}
+
+\subsection{Генератор парсера}
+
+Скрипт \texttt{parser\_generator.py} читает файл \texttt{grammar.txt} и генерирует:
+\begin{itemize}
+    \item Функции парсера для каждого нетерминала
+    \item Определения узлов AST
+    \item Заголовочные файлы
+\end{itemize}
+
+\subsection{Генератор лексера}
+
+Скрипт \texttt{lexer\_generator.py} читает файл \texttt{system\_reserved\_identifiers.txt} и генерирует код лексера с поддержкой всех зарезервированных слов.
+
+\section{Расширение компилятора}
+
+\subsection{Добавление нового ключевого слова}
+
+Для добавления нового ключевого слова:
+
+\begin{enumerate}
+    \item Добавьте ключевое слово в файл \texttt{system\_reserved\_identifiers.txt}
+    \item Добавьте соответствующий тип токена в \texttt{keywords.hpp} (или перегенерируйте)
+    \item Обновите грамматику в \texttt{grammar.txt}, если необходимо
+    \item Пересоберите проект
+\end{enumerate}
+
+\subsection{Добавление нового оператора}
+
+Для добавления нового оператора:
+
+\begin{enumerate}
+    \item Добавьте токен оператора в грамматику (\texttt{grammar.txt})
+    \item Обновите правила парсинга выражений
+    \item Добавьте обработку оператора в генератор POLIZ
+    \item Пересоберите проект
+\end{enumerate}
+
+\subsection{Добавление нового типа данных}
+
+Для добавления нового типа данных:
+
+\begin{enumerate}
+    \item Добавьте ключевое слово типа в \texttt{system\_reserved\_identifiers.txt}
+    \item Обновите грамматику для поддержки нового типа
+    \item Добавьте обработку типа в семантическом анализаторе
+    \item Обновите генератор POLIZ для поддержки операций с новым типом
+\end{enumerate}
+
+\subsection{Добавление новой синтаксической конструкции}
+
+Для добавления новой синтаксической конструкции:
+
+\begin{enumerate}
+    \item Добавьте правило в грамматику (\texttt{grammar.txt})
+    \item Перегенерируйте парсер
+    \item Добавьте соответствующий узел AST (если необходимо)
+    \item Реализуйте обработку конструкции в семантическом анализаторе
+    \item Реализуйте генерацию POLIZ для новой конструкции
+\end{enumerate}
+
+\section{Отладка}
+
+\subsection{Вывод AST}
+
+Для отладки можно использовать функцию печати AST:
+
+\begin{lstlisting}
+ast::print_tree(root, 0);
+\end{lstlisting}
+
+\subsection{Вывод POLIZ}
+
+Для просмотра сгенерированного POLIZ:
+
+\begin{lstlisting}
+poliz_generator.print();
+\end{lstlisting}
+
+\subsection{Логирование}
+
+В коде парсера и лексера можно добавить отладочный вывод для отслеживания процесса разбора.
+
+\section{Тестирование}
+
+\subsection{Структура тестов}
+
+Тесты находятся в файле \texttt{autotest/autotest\_semantic.cpp} и используют фреймворк GoogleTest.
+
+\subsection{Запуск тестов}
+
+Для запуска тестов:
+
+\begin{lstlisting}[language=bash]
+cd cmake-build-debug
+ctest
+\end{lstlisting}
+
+\subsection{Написание новых тестов}
+
+Пример теста:
+
+\begin{lstlisting}
+TEST(ParserTest, SimpleExpression) {
+    std::string source = "int x = 5 + 3;";
+    lexer::Lexer lex(source, "../out/system_reserved_identifiers.txt");
+    ast::AstNode* root = parser::parse(lex, "test.txt");
+    ASSERT_NE(root, nullptr);
+    // Проверки...
+    delete root;
+}
+\end{lstlisting}
+
+\section{Производительность}
+
+\subsection{Оптимизации}
+
+Текущая реализация использует следующие оптимизации:
+
+\begin{itemize}
+    \item Алгоритм Ахо-Корасика для быстрого распознавания ключевых слов
+    \item Рекурсивный спуск для парсинга (эффективен для LL-грамматик)
+    \item Простые оптимизации AST для уменьшения размера дерева
+\end{itemize}
+
+\subsection{Ограничения производительности}
+
+\begin{itemize}
+    \item Парсер не кэширует результаты разбора
+    \item AST не оптимизируется агрессивно
+    \item Генерация POLIZ выполняется за один проход без оптимизаций
+\end{itemize}
+
+\section{Будущие улучшения}
+
+Возможные направления развития:
+
+\begin{itemize}
+    \item Реализация интерпретатора POLIZ
+    \item Добавление более сложных оптимизаций AST
+    \item Поддержка модулей и импорта
+    \item Генерация машинного кода вместо POLIZ
+    \item Улучшение сообщений об ошибках
+    \item Поддержка отладки
+\end{itemize}
+
+\section{Заключение}
+
+Данное руководство описывает архитектуру компилятора и способы его расширения. Для получения дополнительной информации об использовании компилятора обратитесь к руководству пользователя.
+
+При возникновении вопросов или проблем рекомендуется изучить исходный код соответствующих компонентов и использовать отладочные инструменты для диагностики.
+
+\end{document}
+
