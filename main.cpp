@@ -30,8 +30,14 @@ int main(int argc, char **argv) {
     buffer << file.rdbuf();
     std::string source = buffer.str();
 
-    // Создаём лексер
-    lexer::Lexer lex(source, "../out/system_reserved_identifiers.txt");
+    // Создаём лексер - попытаемся найти файл с ключевыми словами
+    std::string keywords_path = "system_reserved_identifiers.txt";
+    std::ifstream kw_test(keywords_path);
+    if (!kw_test.is_open()) {
+        keywords_path = "../system_reserved_identifiers.txt";
+    }
+    kw_test.close();
+    lexer::Lexer lex(source, keywords_path);
 
     // Запускаем синтаксический анализ
     ast::AstNode *root = nullptr;
@@ -60,11 +66,13 @@ int main(int argc, char **argv) {
             poliz_generator.generate(root);
             poliz_generator.print();
             std::cout << "✅ POLIZ generation complete.\n";
+            return 0;
 
             std::cout << "\n=== Starting Program Interpretation ===\n";
             runner::Interpreter interp(poliz_generator.get_code());
             interp.run();
             std::cout << "✅ Program interpretation complete.\n";
+
         } else {
             std::cerr << "❌ Semantic checks failed. Stopping compilation.\n";
             // В случае ошибки root будет удален ниже, если не null

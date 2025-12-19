@@ -86,6 +86,17 @@ add_executable(my_lang_tests
         out/parser.cpp
         out/ast.cpp
         out/ast.hpp
+        out/ast_check.cpp
+        out/ast_check.hpp
+        out/ast_utils.cpp
+        out/ast_functiontree.cpp
+        out/ast_functiontree.hpp
+        out/poliz.cpp
+        out/poliz.hpp
+        out/runner.cpp
+        out/runner.hpp
+        out/command_tree.cpp
+        out/command_tree.hpp
 )
 
 target_include_directories(my_lang_tests PRIVATE

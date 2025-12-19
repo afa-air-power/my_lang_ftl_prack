@@ -8,6 +8,39 @@
 #include <iomanip>
 
 namespace poliz {
+
+    // Вспомогательная функция для имен операций
+    std::string op_to_str(OpType op) {
+        switch(op) {
+            case OpType::LOAD: return "LOAD";
+            case OpType::STORE: return "STORE";
+            case OpType::MOV: return "MOV";
+            case OpType::ADD: return "ADD";
+            case OpType::SUB: return "SUB";
+            case OpType::MUL: return "MUL";
+            case OpType::DIV: return "DIV";
+            case OpType::CMP: return "CMP";
+            case OpType::JMP: return "JMP";
+            case OpType::JE:  return "JE";
+            case OpType::JNE: return "JNE";
+            case OpType::RET: return "RET";
+            case OpType::HALT: return "HALT";
+            case OpType::LABEL: return "LABEL";
+            default: return "UNKNOWN";
+        }
+    }
+
+    // Вспомогательная функция для вывода операндов
+    std::string arg_to_str(const Operand& op) {
+        switch(op.type) {
+            case OperandType::REGISTER:  return "r" + std::to_string(op.reg_num);
+            case OperandType::IMMEDIATE: return "#" + op.value;
+            case OperandType::VARIABLE:  return "[" + op.value + "]";
+            case OperandType::LABEL:     return "@" + op.value;
+            default: return "";
+        }
+    }
+
     // =============================================================================
     // POLIZ GENERATOR
     // =============================================================================
@@ -75,6 +108,24 @@ namespace poliz {
             return Operand();
         }
 
+        // Обработка TOK_ID узлов (содержат идентификатор и TOK_IDREST)
+        if (nodename == "TOK_ID") {
+            // Найти IDENTIFIER терминал в детях
+            for (auto *c: node->children) {
+                if (auto *tn = dynamic_cast<ast::TerminalNode *>(c)) {
+                    if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                        // Загрузить переменную
+                        int reg = alloc_register();
+                        Operand dst(reg);
+                        Operand src(OperandType::VARIABLE, tn->value);
+                        emit(Instruction(OpType::LOAD, dst, src));
+                        return dst;
+                    }
+                }
+            }
+            return Operand();
+        }
+
         // Терминалы
         if (nodename.find("Terminal") != std::string::npos) {
             auto *term = dynamic_cast<ast::TerminalNode *>(node);
@@ -108,7 +159,8 @@ namespace poliz {
         }
 
         // Если это нетерминал выражения, рекурсивно обработать
-        if (nodename.find("EXPR") != std::string::npos || nodename.find("ATOM") != std::string::npos) {
+        if (nodename.find("EXPR") != std::string::npos || nodename.find("ATOM") != std::string::npos || nodename.
+            find("ARG") != std::string::npos) {
             if (node->children.empty()) {
                 return Operand();
             }
@@ -116,25 +168,26 @@ namespace poliz {
             // Специальная обработка для EXPR16 с POSTFIXTAIL (функции)
             if (nodename == "TOK_EXPR16" && node->children.size() >= 2) {
                 ast::AstNode *atom = node->children[0];
+
                 ast::AstNode *postfix = node->children[1];
 
                 if (atom && postfix && postfix->to_string() == "TOK_POSTFIXTAIL") {
                     // Найти функцию в ATOM
                     std::string func_name;
 
-                    std::function<bool(ast::AstNode*)> find_func_name =
-                        [&](ast::AstNode *n) -> bool {
-                            if (auto *tn = dynamic_cast<ast::TerminalNode *>(n)) {
-                                if (tn->token_type == parser::TokenType::IDENTIFIER) {
-                                    func_name = tn->value;
-                                    return true;
-                                }
+                    std::function<bool(ast::AstNode *)> find_func_name =
+                            [&](ast::AstNode *n) -> bool {
+                        if (auto *tn = dynamic_cast<ast::TerminalNode *>(n)) {
+                            if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                                func_name = tn->value;
+                                return true;
                             }
-                            for (auto *child: n->children) {
-                                if (find_func_name(child)) return true;
-                            }
-                            return false;
-                        };
+                        }
+                        for (auto *child: n->children) {
+                            if (find_func_name(child)) return true;
+                        }
+                        return false;
+                    };
 
                     find_func_name(atom);
 
@@ -147,38 +200,71 @@ namespace poliz {
                                     if (child->to_string() == "TOK_ARGLIST") {
                                         // Обработать аргументы
                                         if (func_name == "print") {
-                                            // Специальная обработка для print
-                                            for (auto *expr: child->children) {
-                                                std::string expr_name = expr->to_string();
-                                                if (expr_name == "TOK_EXPRESSION" ||
-                                                    expr_name.find("EXPR") != std::string::npos) {
-                                                    Operand val = generate_expr(expr);
-                                                    if (val.type != OperandType::NONE) {
-                                                        emit(Instruction(OpType::PRINT, val));
-                                                        free_register(val.reg_num);
+                                            // ИСПРАВЛЕНО: Правильная обработка для print
+                                            std::function<void(ast::AstNode *)> process_arglist;
+                                            process_arglist = [&](ast::AstNode *arglist_node) {
+                                                if (!arglist_node) return;
+
+                                                for (auto *arg_child: arglist_node->children) {
+                                                    std::string arg_name = arg_child->to_string();
+
+                                                    // Пропускаем запятые и REST узлы
+                                                    if (arg_name == "TOK_ARGLISTREST") {
+                                                        process_arglist(arg_child);
+                                                        continue;
+                                                    }
+
+                                                    // Обрабатываем выражения
+                                                    if (arg_name == "TOK_EXPRESSION" ||
+                                                        arg_name.find("EXPR") != std::string::npos) {
+                                                        Operand val = generate_expr(arg_child);
+                                                        if (val.type != OperandType::NONE) {
+                                                            emit(Instruction(OpType::PRINT, val));
+                                                            free_register(val.reg_num);
+                                                        }
                                                     }
                                                 }
-                                            }
+                                            };
+                                            process_arglist(child);
                                             return Operand();
+                                        } else if (func_name == "input") {
+                                            // ДОБАВЛЕНО: Обработка input
+                                            int result_reg = alloc_register();
+                                            Operand result(result_reg);
+                                            emit(Instruction(OpType::INPUT, result));
+                                            return result;
                                         } else {
-                                            // Обычная функция: сгенерировать аргументы и CALL
+                                            // Обычная функция
                                             std::vector<Operand> args;
-                                            for (auto *expr: child->children) {
-                                                std::string expr_name = expr->to_string();
-                                                if (expr_name == "TOK_EXPRESSION" ||
-                                                    expr_name.find("EXPR") != std::string::npos) {
-                                                    Operand val = generate_expr(expr);
-                                                    if (val.type != OperandType::NONE) {
-                                                        // PUSH аргумент на стек
-                                                        emit(Instruction(OpType::PUSH, val));
-                                                        args.push_back(val);
+
+                                            std::function<void(ast::AstNode *)> collect_args;
+                                            collect_args = [&](ast::AstNode *arglist_node) {
+                                                if (!arglist_node) return;
+
+                                                for (auto *arg_child: arglist_node->children) {
+                                                    std::string arg_name = arg_child->to_string();
+
+                                                    if (arg_name == "TOK_ARGLISTREST") {
+                                                        collect_args(arg_child);
+                                                        continue;
+                                                    }
+
+                                                    if (arg_name == "TOK_EXPRESSION" ||
+                                                        arg_name.find("EXPR") != std::string::npos) {
+                                                        Operand val = generate_expr(arg_child);
+                                                        if (val.type != OperandType::NONE) {
+                                                            emit(Instruction(OpType::PUSH, val));
+                                                            args.push_back(val);
+                                                        }
                                                     }
                                                 }
-                                            }
+                                            };
+
+                                            collect_args(child);
 
                                             // Вызов функции
                                             emit(Instruction(OpType::CALL,
-                                                           Operand(OperandType::LABEL, func_name)));
+                                                             Operand(OperandType::LABEL, func_name)));
 
                                             // Освободить регистры аргументов
                                             for (auto &arg: args) {
@@ -187,8 +273,8 @@ namespace poliz {
 
                                             // Результат возвращается в r0
                                             int result_reg = alloc_register();
-                                            emit(Instruction(OpType::LOAD, Operand(result_reg),
-                                                           Operand(0)));  // Получить результат из r0
+                                            emit(Instruction(OpType::MOV, Operand(result_reg),
+                                                             Operand(0)));
                                             return Operand(result_reg);
                                         }
                                     }
@@ -318,6 +404,7 @@ namespace poliz {
                 else if (op == "*") emit(Instruction(OpType::MUL, result, left, right));
                 else if (op == "/") emit(Instruction(OpType::DIV, result, left, right));
                 else if (op == "%") emit(Instruction(OpType::MOD, result, left, right));
+
 
                     // Логические операции
                 else if (op == "&&") emit(Instruction(OpType::AND, result, left, right));

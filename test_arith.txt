@@ -7,4 +7,3 @@ int main() {
     c = a + b;
     print(c);
 }
-

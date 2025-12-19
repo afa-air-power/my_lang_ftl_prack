@@ -91,13 +91,13 @@ namespace ast {
         std::string nodename = node->to_string();
 
         if (nodename == "TOK_STMTLIST" || nodename == "TOK_COMPOUNDSTMT") {
-            bool exit_found = false;
+            bool unconditional_exit_found = false;
 
             auto it = node->children.begin();
             while (it != node->children.end()) {
                 AstNode *current_stmt = *it;
 
-                if (exit_found) {
+                if (unconditional_exit_found) {
                     std::cerr << "Optimized: Dead code statement removed at line " << current_stmt->line << ".\n";
                     delete current_stmt;
                     it = node->children.erase(it);
@@ -106,9 +106,16 @@ namespace ast {
 
                 if (current_stmt->children.size() > 0) {
                     std::string child_nodename = current_stmt->children[0]->to_string();
-                    if (child_nodename == "TOK_RETURNSTMT" || child_nodename == "TOK_BREAKSTMT" || child_nodename ==
-                        "TOK_CONTINUESTMT") {
-                        exit_found = true;
+                    // Only mark as unconditional exit if it's a direct return/break/continue
+                    // NOT if it's in an if/while/for statement (conditional blocks)
+                    if (child_nodename == "TOK_RETURNSTMT" || child_nodename == "TOK_BREAKSTMT" || child_nodename == "TOK_CONTINUESTMT") {
+                        unconditional_exit_found = true;
+                    }
+                    // If it's a TOK_IFSTMT or TOK_WHILESTMT or TOK_FORSTMT, don't mark as unconditional exit
+                    // because code after it may still be reachable
+                    else if (child_nodename == "TOK_IFSTMT" || child_nodename == "TOK_WHILESTMT" || child_nodename == "TOK_FORSTMT") {
+                        // These are control flow statements - don't treat as exits unless they have else branches
+                        // For now, don't mark as unconditional exit
                     }
                 }
 
