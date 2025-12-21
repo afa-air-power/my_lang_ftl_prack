@@ -222,11 +222,9 @@ namespace ast {
                         }
                         return "bool";
                     } else if (op == "&&" || op == "||") {
-                        if (left_type != "bool" || right_type != "bool") {
-                            st.error(expr, "logical operators require boolean operands");
-                            return "unknown";
-                        }
-                        return "bool";
+                        // Логические операторы работают с любыми типами (трактуются как bool)
+                        // 0 = false, любое другое значение = true
+                        return "int";  // Результат логической операции - число (0 или 1)
                     }
                 }
                 return left_type;
@@ -253,9 +251,9 @@ namespace ast {
                 std::string op = op_node ? op_node->value : "";
                 std::string expr_type = infer_expression_type(expr->children[1], st);
 
-                if (op == "!" && expr_type != "bool") {
-                    st.error(expr, "logical NOT requires boolean operand");
-                    return "unknown";
+                if (op == "!") {
+                    // Логический NOT работает с любыми типами, возвращает int (0 или 1)
+                    return "int";
                 }
                 if ((op == "-" || op == "+") && !(expr_type == "int" || expr_type == "double" || expr_type == "float")) {
                     st.error(expr, "unary " + op + " requires numeric operand");
@@ -477,9 +475,7 @@ namespace ast {
             AstNode* cond_expr = find_condition_expression(node);
             if (cond_expr) {
                 std::string cond_type = infer_expression_type(cond_expr, st);
-                if (cond_type != "bool" && !cond_type.empty() && cond_type != "unknown") {
-                    st.error(cond_expr, "condition must be boolean, got " + cond_type);
-                }
+                // Любой тип выражения допускается в условии (трактуется как 0=false, non-0=true)
             }
         }
 

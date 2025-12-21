@@ -10,6 +10,10 @@ int main() {
     int x=6;
     if(x<8) { print("tmp"); }
     if(x>7) {print("tmdv");}
-    while(x<6){x+=1;}
+    while(x<90){
+    x=x+1;
+    print(x);
+    }
+    }
     return 0;
 }

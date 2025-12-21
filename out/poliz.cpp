@@ -109,6 +109,7 @@ namespace poliz {
                         }
                         Operand src(OperandType::IMMEDIATE, str_value, true);  // is_string = true
                         emit(Instruction(OpType::LOAD, dst, src));
+                        dst.is_string = true;  // Отметить регистр как содержащий строку
                         return dst;
                     }
                 }
@@ -694,8 +695,11 @@ namespace poliz {
 
                 emit_label(label_start);
                 Operand cond_reg = generate_expr(cond);
+
+                // For efficiency, use jle for comparing with 0
+                // This will jump to end if condition is <= 0 (false)
                 emit(Instruction(OpType::CMP, cond_reg, Operand(OperandType::IMMEDIATE, "0")));
-                emit(Instruction(OpType::JE, Operand(OperandType::LABEL, label_end)));
+                emit(Instruction(OpType::JLE, Operand(OperandType::LABEL, label_end)));
 
                 generate_stmt(body);
                 emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_start)));
