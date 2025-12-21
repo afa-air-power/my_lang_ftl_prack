@@ -29,6 +29,11 @@ namespace runner {
                 labels[code[i].label] = i;
             }
         }
+
+        // Start execution from main function if it exists
+        if (labels.find("main") != labels.end()) {
+            pc = labels["main"];
+        }
     }
 
     double Interpreter::get_operand_value(const poliz::Operand& op) {
@@ -559,6 +564,7 @@ namespace runner {
                         std::cout << val;
                     }
                 }
+                std::cout << std::endl;  // Add newline after print
                 pc++;
                 break;
             }
