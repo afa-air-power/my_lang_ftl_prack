@@ -1,6 +1,14 @@
 int f(int x) {
     return x*x;
 }
+int tmgg(int x) {
+   if(x>10) {
+       return x-10;
+   } else {
+       return tmgg(x+1);
+   }
+}
+
 
 int main() {
     int result = 7;
@@ -10,10 +18,14 @@ int main() {
     int x=6;
     if(x<8) { print("tmp"); }
     if(x>7) {print("tmdv");}
-    while(x<90){
-    x=x+1;
-    print(x);
+    for(int t=0;t<90;t+=1){
+    print("loop");
+
+    print(t);
+    x+=1;
+    print(f(x));
     }
-    }
+
+    print(tmgg(5));
     return 0;
 }

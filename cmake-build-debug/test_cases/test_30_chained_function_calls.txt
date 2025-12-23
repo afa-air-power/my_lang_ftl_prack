@@ -1,0 +1,14 @@
+int increment(int x) {
+    return x + 1;
+}
+
+int double_value(int x) {
+    return x + x;
+}
+
+int main() {
+    int a;
+    int b;
+    a = 5;
+    b = double_value(increment(a));
+}

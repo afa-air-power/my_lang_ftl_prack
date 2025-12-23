@@ -323,7 +323,11 @@ class TOK_FORSTMTNode : public AstNode {
 public:
     AstNode* tok_for;
     AstNode* tok_lparen;
-    AstNode* tok_expression;
+    AstNode* tok_for_init;
+    AstNode* tok_semicolon1;
+    AstNode* tok_for_condition;
+    AstNode* tok_semicolon2;
+    AstNode* tok_for_increment;
     AstNode* tok_rparen;
     AstNode* tok_statement;
 

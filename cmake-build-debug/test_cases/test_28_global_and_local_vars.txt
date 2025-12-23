@@ -1,0 +1,13 @@
+int x;
+
+int modify_x(int val) {
+    x = val;
+    return x;
+}
+
+int main() {
+    int y;
+    y = 5;
+    x = 20;
+    modify_x(y);
+}

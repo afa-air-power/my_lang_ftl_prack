@@ -1,0 +1,7 @@
+int main() {
+    for(1) {
+        print(5);
+    }
+    return 0;
+}
+

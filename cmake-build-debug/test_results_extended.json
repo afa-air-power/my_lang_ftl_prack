@@ -1,0 +1,107 @@
+{
+  "passed": 20,
+  "failed": 0,
+  "total": 20,
+  "results": [
+    {
+      "name": "test_01_assign_const",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_02_simple_add",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_03_subtraction",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_04_multiplication",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_07_multiple_vars",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_08_chain_assign",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_10_compare_eq",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_18_local_var",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_19_float",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_20_empty_main",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_21_simple_function",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_22_void_function",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_23_nested_function_calls",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_24_recursive_function",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_25_function_local_vars",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_26_multiple_params",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_27_function_in_expression",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_28_global_and_local_vars",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_29_function_returns_expression",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_30_chained_function_calls",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

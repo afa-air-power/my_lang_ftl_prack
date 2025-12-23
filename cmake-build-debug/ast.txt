@@ -78,35 +78,54 @@ TOK_PROGRAM
         TOK_TYPE
           Terminal(TOK_INT: 'int')
         TOK_ID
-          Terminal(IDENTIFIER: 'main')
+          Terminal(IDENTIFIER: 'tmgg')
           TOK_IDREST
         TOK_DECLSUFFIX
           Terminal(TOK_LPAREN: '(')
           TOK_PARAMLIST
+            TOK_PARAM
+              TOK_TYPE
+                Terminal(TOK_INT: 'int')
+              TOK_ID
+                Terminal(IDENTIFIER: 'x')
+                TOK_IDREST
+            TOK_PARAMLISTREST
           Terminal(TOK_RPAREN: ')')
           TOK_COMPOUNDSTMT
             Terminal(TOK_LBRACE: '{')
             TOK_STMTLIST
               TOK_STATEMENT
-                TOK_LOCALVARDECL
-                  TOK_TYPE
-                    Terminal(TOK_INT: 'int')
-                  TOK_ID
-                    Terminal(IDENTIFIER: 'result')
-                    TOK_IDREST
-                  TOK_VARDECLREST
-                    Terminal(TOK_EQUAL: '=')
-                    TOK_EXPRESSION
-                      TOK_EXPR01
-                        TOK_EXPR02
-                          TOK_EXPR03
-                            TOK_EXPR04
-                              TOK_EXPR05
-                                TOK_EXPR06
-                                  TOK_EXPR07
-                                    TOK_EXPR08
-                                      TOK_EXPR09
-                                        TOK_EXPR10
+                TOK_IFSTMT
+                  Terminal(TOK_IF: 'if')
+                  Terminal(TOK_LPAREN: '(')
+                  TOK_EXPRESSION
+                    TOK_EXPR01
+                      TOK_EXPR02
+                        TOK_EXPR03
+                          TOK_EXPR04
+                            TOK_EXPR05
+                              TOK_EXPR06
+                                TOK_EXPR07
+                                  TOK_EXPR08
+                                    TOK_EXPR09
+                                      TOK_EXPR10
+                                        TOK_EXPR11
+                                          TOK_EXPR12
+                                            TOK_EXPR13
+                                              TOK_EXPR14
+                                                TOK_EXPR15
+                                                  TOK_EXPR16
+                                                    TOK_ATOM
+                                                      TOK_ID
+                                                        Terminal(IDENTIFIER: 'x')
+                                                        TOK_IDREST
+                                                    TOK_POSTFIXTAIL
+                                                  TOK_EXPR15REST
+                                              TOK_EXPR13REST
+                                            TOK_EXPR12REST
+                                          TOK_EXPR11REST
+                                        TOK_EXPR10REST
+                                          Terminal(TOK_GT: '>')
                                           TOK_EXPR11
                                             TOK_EXPR12
                                               TOK_EXPR13
@@ -115,103 +134,243 @@ TOK_PROGRAM
                                                     TOK_EXPR16
                                                       TOK_ATOM
                                                         TOK_LITERAL
-                                                          Terminal(NUMBER: '7')
+                                                          Terminal(NUMBER: '10')
                                                       TOK_POSTFIXTAIL
                                                     TOK_EXPR15REST
                                                 TOK_EXPR13REST
                                               TOK_EXPR12REST
                                             TOK_EXPR11REST
                                           TOK_EXPR10REST
-                                        TOK_EXPR09REST
-                                      TOK_EXPR08REST
-                                    TOK_EXPR07REST
-                                  TOK_EXPR06REST
-                                TOK_EXPR05REST
-                              TOK_EXPR04REST
-                            TOK_EXPR03REST
-                          TOK_EXPR02REST
-                        TOK_EXPR01REST
-                  Terminal(TOK_SEMICOLON: ';')
+                                      TOK_EXPR09REST
+                                    TOK_EXPR08REST
+                                  TOK_EXPR07REST
+                                TOK_EXPR06REST
+                              TOK_EXPR05REST
+                            TOK_EXPR04REST
+                          TOK_EXPR03REST
+                        TOK_EXPR02REST
+                      TOK_EXPR01REST
+                  Terminal(TOK_RPAREN: ')')
+                  TOK_STATEMENT
+                    TOK_COMPOUNDSTMT
+                      Terminal(TOK_LBRACE: '{')
+                      TOK_STMTLIST
+                        TOK_STATEMENT
+                          TOK_RETURNSTMT
+                            Terminal(TOK_RETURN: 'return')
+                            TOK_EXPRESSION
+                              TOK_EXPR01
+                                TOK_EXPR02
+                                  TOK_EXPR03
+                                    TOK_EXPR04
+                                      TOK_EXPR05
+                                        TOK_EXPR06
+                                          TOK_EXPR07
+                                            TOK_EXPR08
+                                              TOK_EXPR09
+                                                TOK_EXPR10
+                                                  TOK_EXPR11
+                                                    TOK_EXPR12
+                                                      TOK_EXPR13
+                                                        TOK_EXPR14
+                                                          TOK_EXPR15
+                                                            TOK_EXPR16
+                                                              TOK_ATOM
+                                                                TOK_ID
+                                                                  Terminal(IDENTIFIER: 'x')
+                                                                  TOK_IDREST
+                                                              TOK_POSTFIXTAIL
+                                                            TOK_EXPR15REST
+                                                        TOK_EXPR13REST
+                                                      TOK_EXPR12REST
+                                                        Terminal(TOK_MINUS: '-')
+                                                        TOK_EXPR13
+                                                          TOK_EXPR14
+                                                            TOK_EXPR15
+                                                              TOK_EXPR16
+                                                                TOK_ATOM
+                                                                  TOK_LITERAL
+                                                                    Terminal(NUMBER: '10')
+                                                                TOK_POSTFIXTAIL
+                                                              TOK_EXPR15REST
+                                                          TOK_EXPR13REST
+                                                        TOK_EXPR12REST
+                                                    TOK_EXPR11REST
+                                                  TOK_EXPR10REST
+                                                TOK_EXPR09REST
+                                              TOK_EXPR08REST
+                                            TOK_EXPR07REST
+                                          TOK_EXPR06REST
+                                        TOK_EXPR05REST
+                                      TOK_EXPR04REST
+                                    TOK_EXPR03REST
+                                  TOK_EXPR02REST
+                                TOK_EXPR01REST
+                            Terminal(TOK_SEMICOLON: ';')
+                        TOK_STMTLIST
+                      Terminal(TOK_RBRACE: '}')
+                  TOK_ELSEPART
+                    Terminal(TOK_ELSE: 'else')
+                    TOK_STATEMENT
+                      TOK_COMPOUNDSTMT
+                        Terminal(TOK_LBRACE: '{')
+                        TOK_STMTLIST
+                          TOK_STATEMENT
+                            TOK_RETURNSTMT
+                              Terminal(TOK_RETURN: 'return')
+                              TOK_EXPRESSION
+                                TOK_EXPR01
+                                  TOK_EXPR02
+                                    TOK_EXPR03
+                                      TOK_EXPR04
+                                        TOK_EXPR05
+                                          TOK_EXPR06
+                                            TOK_EXPR07
+                                              TOK_EXPR08
+                                                TOK_EXPR09
+                                                  TOK_EXPR10
+                                                    TOK_EXPR11
+                                                      TOK_EXPR12
+                                                        TOK_EXPR13
+                                                          TOK_EXPR14
+                                                            TOK_EXPR15
+                                                              TOK_EXPR16
+                                                                TOK_ATOM
+                                                                  TOK_ID
+                                                                    Terminal(IDENTIFIER: 'tmgg')
+                                                                    TOK_IDREST
+                                                                TOK_POSTFIXTAIL
+                                                                  TOK_POSTFIX_ITEM
+                                                                    Terminal(TOK_LPAREN: '(')
+                                                                    TOK_ARGLIST
+                                                                      TOK_EXPRESSION
+                                                                        TOK_EXPR01
+                                                                          TOK_EXPR02
+                                                                            TOK_EXPR03
+                                                                              TOK_EXPR04
+                                                                                TOK_EXPR05
+                                                                                  TOK_EXPR06
+                                                                                    TOK_EXPR07
+                                                                                      TOK_EXPR08
+                                                                                        TOK_EXPR09
+                                                                                          TOK_EXPR10
+                                                                                            TOK_EXPR11
+                                                                                              TOK_EXPR12
+                                                                                                TOK_EXPR13
+                                                                                                  TOK_EXPR14
+                                                                                                    TOK_EXPR15
+                                                                                                      TOK_EXPR16
+                                                                                                        TOK_ATOM
+                                                                                                          TOK_ID
+                                                                                                            Terminal(IDENTIFIER: 'x')
+                                                                                                            TOK_IDREST
+                                                                                                        TOK_POSTFIXTAIL
+                                                                                                      TOK_EXPR15REST
+                                                                                                  TOK_EXPR13REST
+                                                                                                TOK_EXPR12REST
+                                                                                                  Terminal(TOK_PLUS: '+')
+                                                                                                  TOK_EXPR13
+                                                                                                    TOK_EXPR14
+                                                                                                      TOK_EXPR15
+                                                                                                        TOK_EXPR16
+                                                                                                          TOK_ATOM
+                                                                                                            TOK_LITERAL
+                                                                                                              Terminal(NUMBER: '1')
+                                                                                                          TOK_POSTFIXTAIL
+                                                                                                        TOK_EXPR15REST
+                                                                                                    TOK_EXPR13REST
+                                                                                                  TOK_EXPR12REST
+                                                                                              TOK_EXPR11REST
+                                                                                            TOK_EXPR10REST
+                                                                                          TOK_EXPR09REST
+                                                                                        TOK_EXPR08REST
+                                                                                      TOK_EXPR07REST
+                                                                                    TOK_EXPR06REST
+                                                                                  TOK_EXPR05REST
+                                                                                TOK_EXPR04REST
+                                                                              TOK_EXPR03REST
+                                                                            TOK_EXPR02REST
+                                                                          TOK_EXPR01REST
+                                                                      TOK_ARGLISTREST
+                                                                    Terminal(TOK_RPAREN: ')')
+                                                                  TOK_POSTFIXTAIL
+                                                              TOK_EXPR15REST
+                                                          TOK_EXPR13REST
+                                                        TOK_EXPR12REST
+                                                      TOK_EXPR11REST
+                                                    TOK_EXPR10REST
+                                                  TOK_EXPR09REST
+                                                TOK_EXPR08REST
+                                              TOK_EXPR07REST
+                                            TOK_EXPR06REST
+                                          TOK_EXPR05REST
+                                        TOK_EXPR04REST
+                                      TOK_EXPR03REST
+                                    TOK_EXPR02REST
+                                  TOK_EXPR01REST
+                              Terminal(TOK_SEMICOLON: ';')
+                          TOK_STMTLIST
+                        Terminal(TOK_RBRACE: '}')
+              TOK_STMTLIST
+            Terminal(TOK_RBRACE: '}')
+      TOK_DECLARATIONLIST
+        TOK_DECLARATION
+          TOK_TYPE
+            Terminal(TOK_INT: 'int')
+          TOK_ID
+            Terminal(IDENTIFIER: 'main')
+            TOK_IDREST
+          TOK_DECLSUFFIX
+            Terminal(TOK_LPAREN: '(')
+            TOK_PARAMLIST
+            Terminal(TOK_RPAREN: ')')
+            TOK_COMPOUNDSTMT
+              Terminal(TOK_LBRACE: '{')
               TOK_STMTLIST
                 TOK_STATEMENT
-                  TOK_EXPRESSIONSTMT
-                    TOK_EXPRESSION
-                      TOK_EXPR01
-                        TOK_EXPR02
-                          TOK_EXPR03
-                            TOK_EXPR04
-                              TOK_EXPR05
-                                TOK_EXPR06
-                                  TOK_EXPR07
-                                    TOK_EXPR08
-                                      TOK_EXPR09
-                                        TOK_EXPR10
-                                          TOK_EXPR11
-                                            TOK_EXPR12
-                                              TOK_EXPR13
-                                                TOK_EXPR14
-                                                  TOK_EXPR15
-                                                    TOK_EXPR16
-                                                      TOK_ATOM
-                                                        TOK_ID
-                                                          Terminal(IDENTIFIER: 'print')
-                                                          TOK_IDREST
-                                                      TOK_POSTFIXTAIL
-                                                        TOK_POSTFIX_ITEM
-                                                          Terminal(TOK_LPAREN: '(')
-                                                          TOK_ARGLIST
-                                                            TOK_EXPRESSION
-                                                              TOK_EXPR01
-                                                                TOK_EXPR02
-                                                                  TOK_EXPR03
-                                                                    TOK_EXPR04
-                                                                      TOK_EXPR05
-                                                                        TOK_EXPR06
-                                                                          TOK_EXPR07
-                                                                            TOK_EXPR08
-                                                                              TOK_EXPR09
-                                                                                TOK_EXPR10
-                                                                                  TOK_EXPR11
-                                                                                    TOK_EXPR12
-                                                                                      TOK_EXPR13
-                                                                                        TOK_EXPR14
-                                                                                          TOK_EXPR15
-                                                                                            TOK_EXPR16
-                                                                                              TOK_ATOM
-                                                                                                TOK_LITERAL
-                                                                                                  Terminal(NUMBER: '5')
-                                                                                              TOK_POSTFIXTAIL
-                                                                                            TOK_EXPR15REST
-                                                                                        TOK_EXPR13REST
-                                                                                      TOK_EXPR12REST
-                                                                                    TOK_EXPR11REST
-                                                                                  TOK_EXPR10REST
-                                                                                TOK_EXPR09REST
-                                                                              TOK_EXPR08REST
-                                                                            TOK_EXPR07REST
-                                                                          TOK_EXPR06REST
-                                                                        TOK_EXPR05REST
-                                                                      TOK_EXPR04REST
-                                                                    TOK_EXPR03REST
-                                                                  TOK_EXPR02REST
-                                                                TOK_EXPR01REST
-                                                            TOK_ARGLISTREST
-                                                          Terminal(TOK_RPAREN: ')')
+                  TOK_LOCALVARDECL
+                    TOK_TYPE
+                      Terminal(TOK_INT: 'int')
+                    TOK_ID
+                      Terminal(IDENTIFIER: 'result')
+                      TOK_IDREST
+                    TOK_VARDECLREST
+                      Terminal(TOK_EQUAL: '=')
+                      TOK_EXPRESSION
+                        TOK_EXPR01
+                          TOK_EXPR02
+                            TOK_EXPR03
+                              TOK_EXPR04
+                                TOK_EXPR05
+                                  TOK_EXPR06
+                                    TOK_EXPR07
+                                      TOK_EXPR08
+                                        TOK_EXPR09
+                                          TOK_EXPR10
+                                            TOK_EXPR11
+                                              TOK_EXPR12
+                                                TOK_EXPR13
+                                                  TOK_EXPR14
+                                                    TOK_EXPR15
+                                                      TOK_EXPR16
+                                                        TOK_ATOM
+                                                          TOK_LITERAL
+                                                            Terminal(NUMBER: '7')
                                                         TOK_POSTFIXTAIL
-                                                    TOK_EXPR15REST
-                                                TOK_EXPR13REST
-                                              TOK_EXPR12REST
-                                            TOK_EXPR11REST
-                                          TOK_EXPR10REST
-                                        TOK_EXPR09REST
-                                      TOK_EXPR08REST
-                                    TOK_EXPR07REST
-                                  TOK_EXPR06REST
-                                TOK_EXPR05REST
-                              TOK_EXPR04REST
-                            TOK_EXPR03REST
-                          TOK_EXPR02REST
-                        TOK_EXPR01REST
+                                                      TOK_EXPR15REST
+                                                  TOK_EXPR13REST
+                                                TOK_EXPR12REST
+                                              TOK_EXPR11REST
+                                            TOK_EXPR10REST
+                                          TOK_EXPR09REST
+                                        TOK_EXPR08REST
+                                      TOK_EXPR07REST
+                                    TOK_EXPR06REST
+                                  TOK_EXPR05REST
+                                TOK_EXPR04REST
+                              TOK_EXPR03REST
+                            TOK_EXPR02REST
+                          TOK_EXPR01REST
                     Terminal(TOK_SEMICOLON: ';')
                 TOK_STMTLIST
                   TOK_STATEMENT
@@ -260,7 +419,7 @@ TOK_PROGRAM
                                                                                               TOK_EXPR16
                                                                                                 TOK_ATOM
                                                                                                   TOK_LITERAL
-                                                                                                    Terminal(STRING: 'Hello, World!')
+                                                                                                    Terminal(NUMBER: '5')
                                                                                                 TOK_POSTFIXTAIL
                                                                                               TOK_EXPR15REST
                                                                                           TOK_EXPR13REST
@@ -340,9 +499,8 @@ TOK_PROGRAM
                                                                                               TOK_EXPR15
                                                                                                 TOK_EXPR16
                                                                                                   TOK_ATOM
-                                                                                                    TOK_ID
-                                                                                                      Terminal(IDENTIFIER: 'result')
-                                                                                                      TOK_IDREST
+                                                                                                    TOK_LITERAL
+                                                                                                      Terminal(STRING: 'Hello, World!')
                                                                                                   TOK_POSTFIXTAIL
                                                                                                 TOK_EXPR15REST
                                                                                             TOK_EXPR13REST
@@ -378,83 +536,107 @@ TOK_PROGRAM
                         Terminal(TOK_SEMICOLON: ';')
                     TOK_STMTLIST
                       TOK_STATEMENT
-                        TOK_LOCALVARDECL
-                          TOK_TYPE
-                            Terminal(TOK_INT: 'int')
-                          TOK_ID
-                            Terminal(IDENTIFIER: 'x')
-                            TOK_IDREST
-                          TOK_VARDECLREST
-                            Terminal(TOK_EQUAL: '=')
-                            TOK_EXPRESSION
-                              TOK_EXPR01
-                                TOK_EXPR02
-                                  TOK_EXPR03
-                                    TOK_EXPR04
-                                      TOK_EXPR05
-                                        TOK_EXPR06
-                                          TOK_EXPR07
-                                            TOK_EXPR08
-                                              TOK_EXPR09
-                                                TOK_EXPR10
-                                                  TOK_EXPR11
-                                                    TOK_EXPR12
-                                                      TOK_EXPR13
-                                                        TOK_EXPR14
-                                                          TOK_EXPR15
-                                                            TOK_EXPR16
-                                                              TOK_ATOM
-                                                                TOK_LITERAL
-                                                                  Terminal(NUMBER: '6')
+                        TOK_EXPRESSIONSTMT
+                          TOK_EXPRESSION
+                            TOK_EXPR01
+                              TOK_EXPR02
+                                TOK_EXPR03
+                                  TOK_EXPR04
+                                    TOK_EXPR05
+                                      TOK_EXPR06
+                                        TOK_EXPR07
+                                          TOK_EXPR08
+                                            TOK_EXPR09
+                                              TOK_EXPR10
+                                                TOK_EXPR11
+                                                  TOK_EXPR12
+                                                    TOK_EXPR13
+                                                      TOK_EXPR14
+                                                        TOK_EXPR15
+                                                          TOK_EXPR16
+                                                            TOK_ATOM
+                                                              TOK_ID
+                                                                Terminal(IDENTIFIER: 'print')
+                                                                TOK_IDREST
+                                                            TOK_POSTFIXTAIL
+                                                              TOK_POSTFIX_ITEM
+                                                                Terminal(TOK_LPAREN: '(')
+                                                                TOK_ARGLIST
+                                                                  TOK_EXPRESSION
+                                                                    TOK_EXPR01
+                                                                      TOK_EXPR02
+                                                                        TOK_EXPR03
+                                                                          TOK_EXPR04
+                                                                            TOK_EXPR05
+                                                                              TOK_EXPR06
+                                                                                TOK_EXPR07
+                                                                                  TOK_EXPR08
+                                                                                    TOK_EXPR09
+                                                                                      TOK_EXPR10
+                                                                                        TOK_EXPR11
+                                                                                          TOK_EXPR12
+                                                                                            TOK_EXPR13
+                                                                                              TOK_EXPR14
+                                                                                                TOK_EXPR15
+                                                                                                  TOK_EXPR16
+                                                                                                    TOK_ATOM
+                                                                                                      TOK_ID
+                                                                                                        Terminal(IDENTIFIER: 'result')
+                                                                                                        TOK_IDREST
+                                                                                                    TOK_POSTFIXTAIL
+                                                                                                  TOK_EXPR15REST
+                                                                                              TOK_EXPR13REST
+                                                                                            TOK_EXPR12REST
+                                                                                          TOK_EXPR11REST
+                                                                                        TOK_EXPR10REST
+                                                                                      TOK_EXPR09REST
+                                                                                    TOK_EXPR08REST
+                                                                                  TOK_EXPR07REST
+                                                                                TOK_EXPR06REST
+                                                                              TOK_EXPR05REST
+                                                                            TOK_EXPR04REST
+                                                                          TOK_EXPR03REST
+                                                                        TOK_EXPR02REST
+                                                                      TOK_EXPR01REST
+                                                                  TOK_ARGLISTREST
+                                                                Terminal(TOK_RPAREN: ')')
                                                               TOK_POSTFIXTAIL
-                                                            TOK_EXPR15REST
-                                                        TOK_EXPR13REST
-                                                      TOK_EXPR12REST
-                                                    TOK_EXPR11REST
-                                                  TOK_EXPR10REST
-                                                TOK_EXPR09REST
-                                              TOK_EXPR08REST
-                                            TOK_EXPR07REST
-                                          TOK_EXPR06REST
-                                        TOK_EXPR05REST
-                                      TOK_EXPR04REST
-                                    TOK_EXPR03REST
-                                  TOK_EXPR02REST
-                                TOK_EXPR01REST
+                                                          TOK_EXPR15REST
+                                                      TOK_EXPR13REST
+                                                    TOK_EXPR12REST
+                                                  TOK_EXPR11REST
+                                                TOK_EXPR10REST
+                                              TOK_EXPR09REST
+                                            TOK_EXPR08REST
+                                          TOK_EXPR07REST
+                                        TOK_EXPR06REST
+                                      TOK_EXPR05REST
+                                    TOK_EXPR04REST
+                                  TOK_EXPR03REST
+                                TOK_EXPR02REST
+                              TOK_EXPR01REST
                           Terminal(TOK_SEMICOLON: ';')
                       TOK_STMTLIST
                         TOK_STATEMENT
-                          TOK_IFSTMT
-                            Terminal(TOK_IF: 'if')
-                            Terminal(TOK_LPAREN: '(')
-                            TOK_EXPRESSION
-                              TOK_EXPR01
-                                TOK_EXPR02
-                                  TOK_EXPR03
-                                    TOK_EXPR04
-                                      TOK_EXPR05
-                                        TOK_EXPR06
-                                          TOK_EXPR07
-                                            TOK_EXPR08
-                                              TOK_EXPR09
-                                                TOK_EXPR10
-                                                  TOK_EXPR11
-                                                    TOK_EXPR12
-                                                      TOK_EXPR13
-                                                        TOK_EXPR14
-                                                          TOK_EXPR15
-                                                            TOK_EXPR16
-                                                              TOK_ATOM
-                                                                TOK_ID
-                                                                  Terminal(IDENTIFIER: 'x')
-                                                                  TOK_IDREST
-                                                              TOK_POSTFIXTAIL
-                                                            TOK_EXPR15REST
-                                                        TOK_EXPR13REST
-                                                      TOK_EXPR12REST
-                                                    TOK_EXPR11REST
-                                                  TOK_EXPR10REST
-                                                    Terminal(TOK_LT: '<')
+                          TOK_LOCALVARDECL
+                            TOK_TYPE
+                              Terminal(TOK_INT: 'int')
+                            TOK_ID
+                              Terminal(IDENTIFIER: 'x')
+                              TOK_IDREST
+                            TOK_VARDECLREST
+                              Terminal(TOK_EQUAL: '=')
+                              TOK_EXPRESSION
+                                TOK_EXPR01
+                                  TOK_EXPR02
+                                    TOK_EXPR03
+                                      TOK_EXPR04
+                                        TOK_EXPR05
+                                          TOK_EXPR06
+                                            TOK_EXPR07
+                                              TOK_EXPR08
+                                                TOK_EXPR09
+                                                  TOK_EXPR10
                                                     TOK_EXPR11
                                                       TOK_EXPR12
                                                         TOK_EXPR13
@@ -463,110 +645,23 @@ TOK_PROGRAM
                                                               TOK_EXPR16
                                                                 TOK_ATOM
                                                                   TOK_LITERAL
-                                                                    Terminal(NUMBER: '8')
+                                                                    Terminal(NUMBER: '6')
                                                                 TOK_POSTFIXTAIL
                                                               TOK_EXPR15REST
                                                           TOK_EXPR13REST
                                                         TOK_EXPR12REST
                                                       TOK_EXPR11REST
                                                     TOK_EXPR10REST
-                                                TOK_EXPR09REST
-                                              TOK_EXPR08REST
-                                            TOK_EXPR07REST
-                                          TOK_EXPR06REST
-                                        TOK_EXPR05REST
-                                      TOK_EXPR04REST
-                                    TOK_EXPR03REST
-                                  TOK_EXPR02REST
-                                TOK_EXPR01REST
-                            Terminal(TOK_RPAREN: ')')
-                            TOK_STATEMENT
-                              TOK_COMPOUNDSTMT
-                                Terminal(TOK_LBRACE: '{')
-                                TOK_STMTLIST
-                                  TOK_STATEMENT
-                                    TOK_EXPRESSIONSTMT
-                                      TOK_EXPRESSION
-                                        TOK_EXPR01
-                                          TOK_EXPR02
-                                            TOK_EXPR03
-                                              TOK_EXPR04
-                                                TOK_EXPR05
-                                                  TOK_EXPR06
-                                                    TOK_EXPR07
-                                                      TOK_EXPR08
-                                                        TOK_EXPR09
-                                                          TOK_EXPR10
-                                                            TOK_EXPR11
-                                                              TOK_EXPR12
-                                                                TOK_EXPR13
-                                                                  TOK_EXPR14
-                                                                    TOK_EXPR15
-                                                                      TOK_EXPR16
-                                                                        TOK_ATOM
-                                                                          TOK_ID
-                                                                            Terminal(IDENTIFIER: 'print')
-                                                                            TOK_IDREST
-                                                                        TOK_POSTFIXTAIL
-                                                                          TOK_POSTFIX_ITEM
-                                                                            Terminal(TOK_LPAREN: '(')
-                                                                            TOK_ARGLIST
-                                                                              TOK_EXPRESSION
-                                                                                TOK_EXPR01
-                                                                                  TOK_EXPR02
-                                                                                    TOK_EXPR03
-                                                                                      TOK_EXPR04
-                                                                                        TOK_EXPR05
-                                                                                          TOK_EXPR06
-                                                                                            TOK_EXPR07
-                                                                                              TOK_EXPR08
-                                                                                                TOK_EXPR09
-                                                                                                  TOK_EXPR10
-                                                                                                    TOK_EXPR11
-                                                                                                      TOK_EXPR12
-                                                                                                        TOK_EXPR13
-                                                                                                          TOK_EXPR14
-                                                                                                            TOK_EXPR15
-                                                                                                              TOK_EXPR16
-                                                                                                                TOK_ATOM
-                                                                                                                  TOK_LITERAL
-                                                                                                                    Terminal(STRING: 'tmp')
-                                                                                                                TOK_POSTFIXTAIL
-                                                                                                              TOK_EXPR15REST
-                                                                                                          TOK_EXPR13REST
-                                                                                                        TOK_EXPR12REST
-                                                                                                      TOK_EXPR11REST
-                                                                                                    TOK_EXPR10REST
-                                                                                                  TOK_EXPR09REST
-                                                                                                TOK_EXPR08REST
-                                                                                              TOK_EXPR07REST
-                                                                                            TOK_EXPR06REST
-                                                                                          TOK_EXPR05REST
-                                                                                        TOK_EXPR04REST
-                                                                                      TOK_EXPR03REST
-                                                                                    TOK_EXPR02REST
-                                                                                  TOK_EXPR01REST
-                                                                              TOK_ARGLISTREST
-                                                                            Terminal(TOK_RPAREN: ')')
-                                                                          TOK_POSTFIXTAIL
-                                                                      TOK_EXPR15REST
-                                                                  TOK_EXPR13REST
-                                                                TOK_EXPR12REST
-                                                              TOK_EXPR11REST
-                                                            TOK_EXPR10REST
-                                                          TOK_EXPR09REST
-                                                        TOK_EXPR08REST
-                                                      TOK_EXPR07REST
-                                                    TOK_EXPR06REST
-                                                  TOK_EXPR05REST
-                                                TOK_EXPR04REST
-                                              TOK_EXPR03REST
-                                            TOK_EXPR02REST
-                                          TOK_EXPR01REST
-                                      Terminal(TOK_SEMICOLON: ';')
-                                  TOK_STMTLIST
-                                Terminal(TOK_RBRACE: '}')
-                            TOK_ELSEPART
+                                                  TOK_EXPR09REST
+                                                TOK_EXPR08REST
+                                              TOK_EXPR07REST
+                                            TOK_EXPR06REST
+                                          TOK_EXPR05REST
+                                        TOK_EXPR04REST
+                                      TOK_EXPR03REST
+                                    TOK_EXPR02REST
+                                  TOK_EXPR01REST
+                            Terminal(TOK_SEMICOLON: ';')
                         TOK_STMTLIST
                           TOK_STATEMENT
                             TOK_IFSTMT
@@ -599,7 +694,7 @@ TOK_PROGRAM
                                                         TOK_EXPR12REST
                                                       TOK_EXPR11REST
                                                     TOK_EXPR10REST
-                                                      Terminal(TOK_GT: '>')
+                                                      Terminal(TOK_LT: '<')
                                                       TOK_EXPR11
                                                         TOK_EXPR12
                                                           TOK_EXPR13
@@ -608,7 +703,7 @@ TOK_PROGRAM
                                                                 TOK_EXPR16
                                                                   TOK_ATOM
                                                                     TOK_LITERAL
-                                                                      Terminal(NUMBER: '7')
+                                                                      Terminal(NUMBER: '8')
                                                                   TOK_POSTFIXTAIL
                                                                 TOK_EXPR15REST
                                                             TOK_EXPR13REST
@@ -675,7 +770,7 @@ TOK_PROGRAM
                                                                                                                 TOK_EXPR16
                                                                                                                   TOK_ATOM
                                                                                                                     TOK_LITERAL
-                                                                                                                      Terminal(STRING: 'tmdv')
+                                                                                                                      Terminal(STRING: 'tmp')
                                                                                                                   TOK_POSTFIXTAIL
                                                                                                                 TOK_EXPR15REST
                                                                                                             TOK_EXPR13REST
@@ -714,8 +809,8 @@ TOK_PROGRAM
                               TOK_ELSEPART
                           TOK_STMTLIST
                             TOK_STATEMENT
-                              TOK_WHILESTMT
-                                Terminal(TOK_WHILE: 'while')
+                              TOK_IFSTMT
+                                Terminal(TOK_IF: 'if')
                                 Terminal(TOK_LPAREN: '(')
                                 TOK_EXPRESSION
                                   TOK_EXPR01
@@ -744,7 +839,7 @@ TOK_PROGRAM
                                                           TOK_EXPR12REST
                                                         TOK_EXPR11REST
                                                       TOK_EXPR10REST
-                                                        Terminal(TOK_LT: '<')
+                                                        Terminal(TOK_GT: '>')
                                                         TOK_EXPR11
                                                           TOK_EXPR12
                                                             TOK_EXPR13
@@ -753,7 +848,7 @@ TOK_PROGRAM
                                                                   TOK_EXPR16
                                                                     TOK_ATOM
                                                                       TOK_LITERAL
-                                                                        Terminal(NUMBER: '90')
+                                                                        Terminal(NUMBER: '7')
                                                                     TOK_POSTFIXTAIL
                                                                   TOK_EXPR15REST
                                                               TOK_EXPR13REST
@@ -795,9 +890,50 @@ TOK_PROGRAM
                                                                           TOK_EXPR16
                                                                             TOK_ATOM
                                                                               TOK_ID
-                                                                                Terminal(IDENTIFIER: 'x')
+                                                                                Terminal(IDENTIFIER: 'print')
                                                                                 TOK_IDREST
                                                                             TOK_POSTFIXTAIL
+                                                                              TOK_POSTFIX_ITEM
+                                                                                Terminal(TOK_LPAREN: '(')
+                                                                                TOK_ARGLIST
+                                                                                  TOK_EXPRESSION
+                                                                                    TOK_EXPR01
+                                                                                      TOK_EXPR02
+                                                                                        TOK_EXPR03
+                                                                                          TOK_EXPR04
+                                                                                            TOK_EXPR05
+                                                                                              TOK_EXPR06
+                                                                                                TOK_EXPR07
+                                                                                                  TOK_EXPR08
+                                                                                                    TOK_EXPR09
+                                                                                                      TOK_EXPR10
+                                                                                                        TOK_EXPR11
+                                                                                                          TOK_EXPR12
+                                                                                                            TOK_EXPR13
+                                                                                                              TOK_EXPR14
+                                                                                                                TOK_EXPR15
+                                                                                                                  TOK_EXPR16
+                                                                                                                    TOK_ATOM
+                                                                                                                      TOK_LITERAL
+                                                                                                                        Terminal(STRING: 'tmdv')
+                                                                                                                    TOK_POSTFIXTAIL
+                                                                                                                  TOK_EXPR15REST
+                                                                                                              TOK_EXPR13REST
+                                                                                                            TOK_EXPR12REST
+                                                                                                          TOK_EXPR11REST
+                                                                                                        TOK_EXPR10REST
+                                                                                                      TOK_EXPR09REST
+                                                                                                    TOK_EXPR08REST
+                                                                                                  TOK_EXPR07REST
+                                                                                                TOK_EXPR06REST
+                                                                                              TOK_EXPR05REST
+                                                                                            TOK_EXPR04REST
+                                                                                          TOK_EXPR03REST
+                                                                                        TOK_EXPR02REST
+                                                                                      TOK_EXPR01REST
+                                                                                  TOK_ARGLISTREST
+                                                                                Terminal(TOK_RPAREN: ')')
+                                                                              TOK_POSTFIXTAIL
                                                                           TOK_EXPR15REST
                                                                       TOK_EXPR13REST
                                                                     TOK_EXPR12REST
@@ -811,179 +947,176 @@ TOK_PROGRAM
                                                     TOK_EXPR04REST
                                                   TOK_EXPR03REST
                                                 TOK_EXPR02REST
-                                                  TOK_ASSIGNOP
-                                                    TOK_EQUAL
-                                                      Terminal(TOK_EQUAL: '=')
-                                                  TOK_EXPR02
-                                                    TOK_EXPR03
-                                                      TOK_EXPR04
-                                                        TOK_EXPR05
-                                                          TOK_EXPR06
-                                                            TOK_EXPR07
-                                                              TOK_EXPR08
-                                                                TOK_EXPR09
-                                                                  TOK_EXPR10
-                                                                    TOK_EXPR11
-                                                                      TOK_EXPR12
-                                                                        TOK_EXPR13
-                                                                          TOK_EXPR14
-                                                                            TOK_EXPR15
-                                                                              TOK_EXPR16
-                                                                                TOK_ATOM
-                                                                                  TOK_ID
-                                                                                    Terminal(IDENTIFIER: 'x')
-                                                                                    TOK_IDREST
-                                                                                TOK_POSTFIXTAIL
-                                                                              TOK_EXPR15REST
-                                                                          TOK_EXPR13REST
-                                                                        TOK_EXPR12REST
-                                                                          Terminal(TOK_PLUS: '+')
-                                                                          TOK_EXPR13
-                                                                            TOK_EXPR14
-                                                                              TOK_EXPR15
-                                                                                TOK_EXPR16
-                                                                                  TOK_ATOM
-                                                                                    TOK_LITERAL
-                                                                                      Terminal(NUMBER: '1')
-                                                                                  TOK_POSTFIXTAIL
-                                                                                TOK_EXPR15REST
-                                                                            TOK_EXPR13REST
-                                                                          TOK_EXPR12REST
-                                                                      TOK_EXPR11REST
-                                                                    TOK_EXPR10REST
-                                                                  TOK_EXPR09REST
-                                                                TOK_EXPR08REST
-                                                              TOK_EXPR07REST
-                                                            TOK_EXPR06REST
-                                                          TOK_EXPR05REST
-                                                        TOK_EXPR04REST
-                                                      TOK_EXPR03REST
-                                                    TOK_EXPR02REST
                                               TOK_EXPR01REST
                                           Terminal(TOK_SEMICOLON: ';')
                                       TOK_STMTLIST
-                                        TOK_STATEMENT
-                                          TOK_EXPRESSIONSTMT
-                                            TOK_EXPRESSION
-                                              TOK_EXPR01
-                                                TOK_EXPR02
-                                                  TOK_EXPR03
-                                                    TOK_EXPR04
-                                                      TOK_EXPR05
-                                                        TOK_EXPR06
-                                                          TOK_EXPR07
-                                                            TOK_EXPR08
-                                                              TOK_EXPR09
-                                                                TOK_EXPR10
-                                                                  TOK_EXPR11
-                                                                    TOK_EXPR12
-                                                                      TOK_EXPR13
-                                                                        TOK_EXPR14
-                                                                          TOK_EXPR15
-                                                                            TOK_EXPR16
-                                                                              TOK_ATOM
-                                                                                TOK_ID
-                                                                                  Terminal(IDENTIFIER: 'print')
-                                                                                  TOK_IDREST
-                                                                              TOK_POSTFIXTAIL
-                                                                                TOK_POSTFIX_ITEM
-                                                                                  Terminal(TOK_LPAREN: '(')
-                                                                                  TOK_ARGLIST
-                                                                                    TOK_EXPRESSION
-                                                                                      TOK_EXPR01
-                                                                                        TOK_EXPR02
-                                                                                          TOK_EXPR03
-                                                                                            TOK_EXPR04
-                                                                                              TOK_EXPR05
-                                                                                                TOK_EXPR06
-                                                                                                  TOK_EXPR07
-                                                                                                    TOK_EXPR08
-                                                                                                      TOK_EXPR09
-                                                                                                        TOK_EXPR10
-                                                                                                          TOK_EXPR11
-                                                                                                            TOK_EXPR12
-                                                                                                              TOK_EXPR13
-                                                                                                                TOK_EXPR14
-                                                                                                                  TOK_EXPR15
-                                                                                                                    TOK_EXPR16
-                                                                                                                      TOK_ATOM
-                                                                                                                        TOK_ID
-                                                                                                                          Terminal(IDENTIFIER: 'x')
-                                                                                                                          TOK_IDREST
-                                                                                                                      TOK_POSTFIXTAIL
-                                                                                                                    TOK_EXPR15REST
-                                                                                                                TOK_EXPR13REST
-                                                                                                              TOK_EXPR12REST
-                                                                                                            TOK_EXPR11REST
-                                                                                                          TOK_EXPR10REST
-                                                                                                        TOK_EXPR09REST
-                                                                                                      TOK_EXPR08REST
-                                                                                                    TOK_EXPR07REST
-                                                                                                  TOK_EXPR06REST
-                                                                                                TOK_EXPR05REST
-                                                                                              TOK_EXPR04REST
-                                                                                            TOK_EXPR03REST
-                                                                                          TOK_EXPR02REST
-                                                                                        TOK_EXPR01REST
-                                                                                    TOK_ARGLISTREST
-                                                                                  Terminal(TOK_RPAREN: ')')
-                                                                                TOK_POSTFIXTAIL
-                                                                            TOK_EXPR15REST
-                                                                        TOK_EXPR13REST
-                                                                      TOK_EXPR12REST
-                                                                    TOK_EXPR11REST
-                                                                  TOK_EXPR10REST
-                                                                TOK_EXPR09REST
-                                                              TOK_EXPR08REST
-                                                            TOK_EXPR07REST
-                                                          TOK_EXPR06REST
-                                                        TOK_EXPR05REST
-                                                      TOK_EXPR04REST
-                                                    TOK_EXPR03REST
-                                                  TOK_EXPR02REST
-                                                TOK_EXPR01REST
-                                            Terminal(TOK_SEMICOLON: ';')
-                                        TOK_STMTLIST
                                     Terminal(TOK_RBRACE: '}')
+                                TOK_ELSEPART
                             TOK_STMTLIST
                               TOK_STATEMENT
-                                TOK_RETURNSTMT
-                                  Terminal(TOK_RETURN: 'return')
-                                  TOK_EXPRESSION
-                                    TOK_EXPR01
-                                      TOK_EXPR02
-                                        TOK_EXPR03
-                                          TOK_EXPR04
-                                            TOK_EXPR05
-                                              TOK_EXPR06
-                                                TOK_EXPR07
-                                                  TOK_EXPR08
-                                                    TOK_EXPR09
-                                                      TOK_EXPR10
-                                                        TOK_EXPR11
-                                                          TOK_EXPR12
-                                                            TOK_EXPR13
-                                                              TOK_EXPR14
-                                                                TOK_EXPR15
-                                                                  TOK_EXPR16
-                                                                    TOK_ATOM
-                                                                      TOK_LITERAL
-                                                                        Terminal(NUMBER: '0')
-                                                                    TOK_POSTFIXTAIL
-                                                                  TOK_EXPR15REST
-                                                              TOK_EXPR13REST
-                                                            TOK_EXPR12REST
-                                                          TOK_EXPR11REST
-                                                        TOK_EXPR10REST
-                                                      TOK_EXPR09REST
-                                                    TOK_EXPR08REST
-                                                  TOK_EXPR07REST
-                                                TOK_EXPR06REST
-                                              TOK_EXPR05REST
-                                            TOK_EXPR04REST
-                                          TOK_EXPR03REST
-                                        TOK_EXPR02REST
-                                      TOK_EXPR01REST
-                                  Terminal(TOK_SEMICOLON: ';')
-            Terminal(TOK_RBRACE: '}')
-      TOK_DECLARATIONLIST
+                                TOK_FORSTMT
+                              TOK_STMTLIST
+                                TOK_STATEMENT
+                                  TOK_EXPRESSIONSTMT
+                                    TOK_EXPRESSION
+                                      TOK_EXPR01
+                                        TOK_EXPR02
+                                          TOK_EXPR03
+                                            TOK_EXPR04
+                                              TOK_EXPR05
+                                                TOK_EXPR06
+                                                  TOK_EXPR07
+                                                    TOK_EXPR08
+                                                      TOK_EXPR09
+                                                        TOK_EXPR10
+                                                          TOK_EXPR11
+                                                            TOK_EXPR12
+                                                              TOK_EXPR13
+                                                                TOK_EXPR14
+                                                                  TOK_EXPR15
+                                                                    TOK_EXPR16
+                                                                      TOK_ATOM
+                                                                        TOK_ID
+                                                                          Terminal(IDENTIFIER: 'print')
+                                                                          TOK_IDREST
+                                                                      TOK_POSTFIXTAIL
+                                                                        TOK_POSTFIX_ITEM
+                                                                          Terminal(TOK_LPAREN: '(')
+                                                                          TOK_ARGLIST
+                                                                            TOK_EXPRESSION
+                                                                              TOK_EXPR01
+                                                                                TOK_EXPR02
+                                                                                  TOK_EXPR03
+                                                                                    TOK_EXPR04
+                                                                                      TOK_EXPR05
+                                                                                        TOK_EXPR06
+                                                                                          TOK_EXPR07
+                                                                                            TOK_EXPR08
+                                                                                              TOK_EXPR09
+                                                                                                TOK_EXPR10
+                                                                                                  TOK_EXPR11
+                                                                                                    TOK_EXPR12
+                                                                                                      TOK_EXPR13
+                                                                                                        TOK_EXPR14
+                                                                                                          TOK_EXPR15
+                                                                                                            TOK_EXPR16
+                                                                                                              TOK_ATOM
+                                                                                                                TOK_ID
+                                                                                                                  Terminal(IDENTIFIER: 'tmgg')
+                                                                                                                  TOK_IDREST
+                                                                                                              TOK_POSTFIXTAIL
+                                                                                                                TOK_POSTFIX_ITEM
+                                                                                                                  Terminal(TOK_LPAREN: '(')
+                                                                                                                  TOK_ARGLIST
+                                                                                                                    TOK_EXPRESSION
+                                                                                                                      TOK_EXPR01
+                                                                                                                        TOK_EXPR02
+                                                                                                                          TOK_EXPR03
+                                                                                                                            TOK_EXPR04
+                                                                                                                              TOK_EXPR05
+                                                                                                                                TOK_EXPR06
+                                                                                                                                  TOK_EXPR07
+                                                                                                                                    TOK_EXPR08
+                                                                                                                                      TOK_EXPR09
+                                                                                                                                        TOK_EXPR10
+                                                                                                                                          TOK_EXPR11
+                                                                                                                                            TOK_EXPR12
+                                                                                                                                              TOK_EXPR13
+                                                                                                                                                TOK_EXPR14
+                                                                                                                                                  TOK_EXPR15
+                                                                                                                                                    TOK_EXPR16
+                                                                                                                                                      TOK_ATOM
+                                                                                                                                                        TOK_LITERAL
+                                                                                                                                                          Terminal(NUMBER: '5')
+                                                                                                                                                      TOK_POSTFIXTAIL
+                                                                                                                                                    TOK_EXPR15REST
+                                                                                                                                                TOK_EXPR13REST
+                                                                                                                                              TOK_EXPR12REST
+                                                                                                                                            TOK_EXPR11REST
+                                                                                                                                          TOK_EXPR10REST
+                                                                                                                                        TOK_EXPR09REST
+                                                                                                                                      TOK_EXPR08REST
+                                                                                                                                    TOK_EXPR07REST
+                                                                                                                                  TOK_EXPR06REST
+                                                                                                                                TOK_EXPR05REST
+                                                                                                                              TOK_EXPR04REST
+                                                                                                                            TOK_EXPR03REST
+                                                                                                                          TOK_EXPR02REST
+                                                                                                                        TOK_EXPR01REST
+                                                                                                                    TOK_ARGLISTREST
+                                                                                                                  Terminal(TOK_RPAREN: ')')
+                                                                                                                TOK_POSTFIXTAIL
+                                                                                                            TOK_EXPR15REST
+                                                                                                        TOK_EXPR13REST
+                                                                                                      TOK_EXPR12REST
+                                                                                                    TOK_EXPR11REST
+                                                                                                  TOK_EXPR10REST
+                                                                                                TOK_EXPR09REST
+                                                                                              TOK_EXPR08REST
+                                                                                            TOK_EXPR07REST
+                                                                                          TOK_EXPR06REST
+                                                                                        TOK_EXPR05REST
+                                                                                      TOK_EXPR04REST
+                                                                                    TOK_EXPR03REST
+                                                                                  TOK_EXPR02REST
+                                                                                TOK_EXPR01REST
+                                                                            TOK_ARGLISTREST
+                                                                          Terminal(TOK_RPAREN: ')')
+                                                                        TOK_POSTFIXTAIL
+                                                                    TOK_EXPR15REST
+                                                                TOK_EXPR13REST
+                                                              TOK_EXPR12REST
+                                                            TOK_EXPR11REST
+                                                          TOK_EXPR10REST
+                                                        TOK_EXPR09REST
+                                                      TOK_EXPR08REST
+                                                    TOK_EXPR07REST
+                                                  TOK_EXPR06REST
+                                                TOK_EXPR05REST
+                                              TOK_EXPR04REST
+                                            TOK_EXPR03REST
+                                          TOK_EXPR02REST
+                                        TOK_EXPR01REST
+                                    Terminal(TOK_SEMICOLON: ';')
+                                TOK_STMTLIST
+                                  TOK_STATEMENT
+                                    TOK_RETURNSTMT
+                                      Terminal(TOK_RETURN: 'return')
+                                      TOK_EXPRESSION
+                                        TOK_EXPR01
+                                          TOK_EXPR02
+                                            TOK_EXPR03
+                                              TOK_EXPR04
+                                                TOK_EXPR05
+                                                  TOK_EXPR06
+                                                    TOK_EXPR07
+                                                      TOK_EXPR08
+                                                        TOK_EXPR09
+                                                          TOK_EXPR10
+                                                            TOK_EXPR11
+                                                              TOK_EXPR12
+                                                                TOK_EXPR13
+                                                                  TOK_EXPR14
+                                                                    TOK_EXPR15
+                                                                      TOK_EXPR16
+                                                                        TOK_ATOM
+                                                                          TOK_LITERAL
+                                                                            Terminal(NUMBER: '0')
+                                                                        TOK_POSTFIXTAIL
+                                                                      TOK_EXPR15REST
+                                                                  TOK_EXPR13REST
+                                                                TOK_EXPR12REST
+                                                              TOK_EXPR11REST
+                                                            TOK_EXPR10REST
+                                                          TOK_EXPR09REST
+                                                        TOK_EXPR08REST
+                                                      TOK_EXPR07REST
+                                                    TOK_EXPR06REST
+                                                  TOK_EXPR05REST
+                                                TOK_EXPR04REST
+                                              TOK_EXPR03REST
+                                            TOK_EXPR02REST
+                                          TOK_EXPR01REST
+                                      Terminal(TOK_SEMICOLON: ';')
+              Terminal(TOK_RBRACE: '}')
+        TOK_DECLARATIONLIST

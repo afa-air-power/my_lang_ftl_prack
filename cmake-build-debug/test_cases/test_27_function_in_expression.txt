@@ -1,0 +1,8 @@
+int get_ten() {
+    return 10;
+}
+
+int main() {
+    int result;
+    result = get_ten() + 5;
+}

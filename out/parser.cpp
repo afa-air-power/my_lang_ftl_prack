@@ -681,29 +681,95 @@ ast::AstNode* TOK_FORSTMT() {
             delete node;
             syntax_error("expected TOK_FOR in TOK_FORSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
+        node->tok_for = new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col);
         gc();
         if (current != TokenType::TOK_LPAREN) {
             delete node;
             syntax_error("expected TOK_LPAREN in TOK_FORSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
+        node->tok_lparen = new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col);
         gc();
-        ast::AstNode* child_tok_expression = TOK_EXPRESSION();
-        node->add_child(child_tok_expression);
+
+        // Parse first expression (init) - can be empty or declaration
+        node->tok_for_init = TOK_FORINIT();
+
+        if (current != TokenType::TOK_SEMICOLON) {
+            delete node;
+            syntax_error("expected TOK_SEMICOLON after for init");
+        }
+        node->tok_semicolon1 = new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col);
+        gc();
+
+        // Parse second expression (condition) - can be empty
+        node->tok_for_condition = TOK_FORCONDITION();
+
+        if (current != TokenType::TOK_SEMICOLON) {
+            delete node;
+            syntax_error("expected TOK_SEMICOLON after for condition");
+        }
+        node->tok_semicolon2 = new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col);
+        gc();
+
+        // Parse third expression (increment) - can be empty
+        node->tok_for_increment = TOK_FORINCREMENT();
+
         if (current != TokenType::TOK_RPAREN) {
             delete node;
             syntax_error("expected TOK_RPAREN in TOK_FORSTMT");
         }
-        node->add_child(new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col));
+        node->tok_rparen = new ast::TerminalNode(current, current_token.value, current_token.name, current_token.line, current_token.col);
         gc();
-        ast::AstNode* child_tok_statement = TOK_STATEMENT();
-        node->add_child(child_tok_statement);
+
+        node->tok_statement = TOK_STATEMENT();
         return node;
     }
     delete node;
     syntax_error("unexpected token "+token_to_string(current)+" in TOK_FORSTMT");
     return nullptr;
+}
+
+ast::AstNode* TOK_FORINIT() {
+    // ForInit -> Type id VarDeclRest | Expression | ε
+
+    // Check if it's a type declaration (int, float, double, string, etc.)
+    if (current == TokenType::TOK_INT || current == TokenType::TOK_FLOAT ||
+        current == TokenType::TOK_DOUBLE || current == TokenType::TOK_STRING ||
+        current == TokenType::TOK_VECTOR) {
+
+        // Parse Type id VarDeclRest
+        ast::AstNode* type_node = TOK_TYPE();
+        ast::AstNode* id_node = TOK_ID();
+        ast::AstNode* vardecl_rest = TOK_VARDECLREST();
+
+        // Combine into a declaration node
+        ast::AstNode* decl_node = new ast::AstNode(ast::NodeType::TOK_LOCALVARDECL);
+        decl_node->add_child(type_node);
+        decl_node->add_child(id_node);
+        decl_node->add_child(vardecl_rest);
+        return decl_node;
+    } else if (current == TokenType::TOK_SEMICOLON) {
+        // epsilon - no init expression
+        return nullptr;
+    } else {
+        // Parse Expression
+        return TOK_EXPRESSION();
+    }
+}
+
+ast::AstNode* TOK_FORCONDITION() {
+    // ForCondition -> Expression | ε
+    if (current == TokenType::TOK_SEMICOLON) {
+        return nullptr;  // epsilon
+    }
+    return TOK_EXPRESSION();
+}
+
+ast::AstNode* TOK_FORINCREMENT() {
+    // ForIncrement -> Expression | ε
+    if (current == TokenType::TOK_RPAREN) {
+        return nullptr;  // epsilon
+    }
+    return TOK_EXPRESSION();
 }
 
 ast::AstNode* TOK_AFTERSTMT() {

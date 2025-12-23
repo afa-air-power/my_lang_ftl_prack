@@ -16,7 +16,10 @@
 <CompoundStmt> -> "{" <StmtList> "}"
 <StmtList> -> <Statement> <StmtList> | ε
 <Statement> -> <LocalVarDecl> | <IfStmt> | <WhileStmt> | <ReturnStmt> | <ExpressionStmt> | <CompoundStmt> | <ForStmt> | <AfterStmt>
-<ForStmt> -> "for" "(" <Expression> ")" <Statement>
+<ForStmt> -> "for" "(" <ForInit> ";" <ForCondition> ";" <ForIncrement> ")" <Statement>
+<ForInit> -> <Type> <id> <VarDeclRest> | <Expression> | ε
+<ForCondition> -> <Expression> | ε
+<ForIncrement> -> <Expression> | ε
 <AfterStmt> -> "after" <Expression> <LoopStmt>
 <LoopStmt> -> <WhileStmt> | <ForStmt>
 <LocalVarDecl> -> <Type> <id> <VarDeclRest> ";"

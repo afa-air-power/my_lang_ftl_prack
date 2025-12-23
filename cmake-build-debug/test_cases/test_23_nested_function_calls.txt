@@ -1,0 +1,14 @@
+int double_val(int x) {
+    return x + x;
+}
+
+int add_five(int y) {
+    return y + 5;
+}
+
+int main() {
+    int a;
+    int b;
+    a = 10;
+    b = double_val(a);
+}

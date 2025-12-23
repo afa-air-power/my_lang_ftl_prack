@@ -1,0 +1,11 @@
+int sum_three(int a, int b, int c) {
+    int temp;
+    temp = a + b;
+    temp = temp + c;
+    return temp;
+}
+
+int main() {
+    int result;
+    result = sum_three(1, 2, 3);
+}

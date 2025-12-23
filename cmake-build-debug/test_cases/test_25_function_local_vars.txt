@@ -1,0 +1,10 @@
+int calculate(int x) {
+    int temp;
+    temp = x + 5;
+    return temp;
+}
+
+int main() {
+    int result;
+    result = calculate(10);
+}

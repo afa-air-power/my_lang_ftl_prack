@@ -1,0 +1,107 @@
+{
+  "passed": 20,
+  "failed": 0,
+  "total": 20,
+  "results": [
+    {
+      "name": "test_01_assign_const",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_02_simple_add",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_03_subtraction",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_04_multiplication",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_05_division",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_06_modulo",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_07_multiple_vars",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_08_chain_assign",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_09_double_arith",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_10_compare_eq",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_11_compare_lt",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_12_compare_gt",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_13_if_statement",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_14_while_loop",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_15_logical_and",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_16_logical_or",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_17_logical_not",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_18_local_var",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_19_float",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "test_20_empty_main",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}
