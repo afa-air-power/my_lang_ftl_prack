@@ -12,20 +12,45 @@ namespace poliz {
     // Вспомогательная функция для имен операций
     std::string op_to_str(OpType op) {
         switch(op) {
+            case OpType::NOP: return "NOP";
             case OpType::LOAD: return "LOAD";
             case OpType::STORE: return "STORE";
             case OpType::MOV: return "MOV";
+            case OpType::LEA: return "LEA";
+            case OpType::PUSH: return "PUSH";
+            case OpType::POP: return "POP";
             case OpType::ADD: return "ADD";
             case OpType::SUB: return "SUB";
             case OpType::MUL: return "MUL";
             case OpType::DIV: return "DIV";
+            case OpType::MOD: return "MOD";
+            case OpType::INC: return "INC";
+            case OpType::DEC: return "DEC";
+            case OpType::NEG: return "NEG";
+            case OpType::AND: return "AND";
+            case OpType::OR: return "OR";
+            case OpType::XOR: return "XOR";
+            case OpType::NOT: return "NOT";
+            case OpType::SHL: return "SHL";
+            case OpType::SHR: return "SHR";
             case OpType::CMP: return "CMP";
+            case OpType::TEST: return "TEST";
             case OpType::JMP: return "JMP";
-            case OpType::JE:  return "JE";
+            case OpType::JZ: return "JZ";
+            case OpType::JNZ: return "JNZ";
+            case OpType::JE: return "JE";
             case OpType::JNE: return "JNE";
+            case OpType::JL: return "JL";
+            case OpType::JG: return "JG";
+            case OpType::JLE: return "JLE";
+            case OpType::JGE: return "JGE";
+            case OpType::CALL: return "CALL";
             case OpType::RET: return "RET";
-            case OpType::HALT: return "HALT";
+            case OpType::PRINT: return "PRINT";
+            case OpType::INPUT: return "INPUT";
+            case OpType::MEMBER: return "MEMBER";
             case OpType::LABEL: return "LABEL";
+            case OpType::HALT: return "HALT";
             default: return "UNKNOWN";
         }
     }
@@ -304,7 +329,8 @@ namespace poliz {
                 ast::AstNode *rest = node->children[1];
                 if (rest && !rest->children.empty()) {
                     // Ищем ASSIGNOP в rest
-                    for (auto *c: rest->children) {
+                    for (size_t idx = 0; idx < rest->children.size(); idx++) {
+                        auto *c = rest->children[idx];
                         if (c->to_string() == "TOK_ASSIGNOP") {
                             // Это присваивание!
                             // Левая часть - это node->children[0] (переменная)
@@ -338,11 +364,85 @@ namespace poliz {
                                 }
 
                                 if (right_expr) {
+                                    // Найти оператор присваивания
+                                    std::string assign_op = "=";
+                                    for (auto *op_child: c->children) {
+                                        if (auto *tn = dynamic_cast<ast::TerminalNode *>(op_child)) {
+                                            assign_op = tn->value;
+                                            break;
+                                        }
+                                    }
+
                                     Operand value = generate_expr(right_expr);
                                     Operand var_op(OperandType::VARIABLE, var_name);
-                                    emit(Instruction(OpType::STORE, var_op, value));
-                                    free_register(value.reg_num);
-                                    return value;  // Возвращаем значение присваивания
+
+                                    // Обработка составных операторов присваивания
+                                    if (assign_op == "+=") {
+                                        int result_reg = alloc_register();
+                                        Operand curr_var(OperandType::VARIABLE, var_name);
+                                        Operand curr_val(result_reg);
+                                        emit(Instruction(OpType::LOAD, curr_val, curr_var));
+                                        int final_reg = alloc_register();
+                                        emit(Instruction(OpType::ADD, Operand(final_reg), curr_val, value));
+                                        emit(Instruction(OpType::STORE, var_op, Operand(final_reg)));
+                                        free_register(result_reg);
+                                        free_register(final_reg);
+                                        free_register(value.reg_num);
+                                        return Operand(final_reg);
+                                    } else if (assign_op == "-=") {
+                                        int result_reg = alloc_register();
+                                        Operand curr_var(OperandType::VARIABLE, var_name);
+                                        Operand curr_val(result_reg);
+                                        emit(Instruction(OpType::LOAD, curr_val, curr_var));
+                                        int final_reg = alloc_register();
+                                        emit(Instruction(OpType::SUB, Operand(final_reg), curr_val, value));
+                                        emit(Instruction(OpType::STORE, var_op, Operand(final_reg)));
+                                        free_register(result_reg);
+                                        free_register(final_reg);
+                                        free_register(value.reg_num);
+                                        return Operand(final_reg);
+                                    } else if (assign_op == "*=") {
+                                        int result_reg = alloc_register();
+                                        Operand curr_var(OperandType::VARIABLE, var_name);
+                                        Operand curr_val(result_reg);
+                                        emit(Instruction(OpType::LOAD, curr_val, curr_var));
+                                        int final_reg = alloc_register();
+                                        emit(Instruction(OpType::MUL, Operand(final_reg), curr_val, value));
+                                        emit(Instruction(OpType::STORE, var_op, Operand(final_reg)));
+                                        free_register(result_reg);
+                                        free_register(final_reg);
+                                        free_register(value.reg_num);
+                                        return Operand(final_reg);
+                                    } else if (assign_op == "/=") {
+                                        int result_reg = alloc_register();
+                                        Operand curr_var(OperandType::VARIABLE, var_name);
+                                        Operand curr_val(result_reg);
+                                        emit(Instruction(OpType::LOAD, curr_val, curr_var));
+                                        int final_reg = alloc_register();
+                                        emit(Instruction(OpType::DIV, Operand(final_reg), curr_val, value));
+                                        emit(Instruction(OpType::STORE, var_op, Operand(final_reg)));
+                                        free_register(result_reg);
+                                        free_register(final_reg);
+                                        free_register(value.reg_num);
+                                        return Operand(final_reg);
+                                    } else if (assign_op == "%=") {
+                                        int result_reg = alloc_register();
+                                        Operand curr_var(OperandType::VARIABLE, var_name);
+                                        Operand curr_val(result_reg);
+                                        emit(Instruction(OpType::LOAD, curr_val, curr_var));
+                                        int final_reg = alloc_register();
+                                        emit(Instruction(OpType::MOD, Operand(final_reg), curr_val, value));
+                                        emit(Instruction(OpType::STORE, var_op, Operand(final_reg)));
+                                        free_register(result_reg);
+                                        free_register(final_reg);
+                                        free_register(value.reg_num);
+                                        return Operand(final_reg);
+                                    } else {
+                                        // Обычное присваивание "="
+                                        emit(Instruction(OpType::STORE, var_op, value));
+                                        free_register(value.reg_num);
+                                        return value;
+                                    }
                                 }
                             }
                             return Operand();
@@ -549,29 +649,67 @@ namespace poliz {
             }
 
             if (declsuffix) {
-                // Ищем TOK_COMPOUNDSTMT (тело функции)
-                for (auto *c: declsuffix->children) {
-                    if (c->to_string() == "TOK_COMPOUNDSTMT") {
-                        // Это функция! Создать метку и сгенерировать тело
-                        if (id_node) {
-                            std::string func_name;
-                            for (auto *id_child: id_node->children) {
-                                if (auto *tn = dynamic_cast<ast::TerminalNode *>(id_child)) {
-                                    func_name = tn->value;
-                                    break;
-                                }
-                            }
+                // Ищем параметры и тело функции
+                std::vector<std::string> param_names;
+                ast::AstNode *compound_stmt = nullptr;
 
-                            if (!func_name.empty()) {
-                                emit_label(func_name);
-                                generate_stmt(c);
-                                // Добавить RET если его нет
-                                if (code.empty() || code.back().op != OpType::RET) {
-                                    emit(Instruction(OpType::RET));
+                // Функция для рекурсивного поиска параметров
+                std::function<void(ast::AstNode*)> find_params = [&](ast::AstNode *node) {
+                    if (!node) return;
+
+                    if (node->to_string() == "TOK_PARAM") {
+                        // Найти идентификатор в параметре
+                        for (auto *child: node->children) {
+                            if (auto *tn = dynamic_cast<ast::TerminalNode *>(child)) {
+                                if (tn->token_type == parser::TokenType::IDENTIFIER) {
+                                    param_names.push_back(tn->value);
+                                    break;
                                 }
                             }
                         }
                         return;
+                    }
+
+                    // Рекурсивно ищем в детях, но не слишком глубоко
+                    for (auto *child: node->children) {
+                        find_params(child);
+                    }
+                };
+
+                // Ищем все компоненты функции
+                for (auto *c: declsuffix->children) {
+                    if (c->to_string() == "TOK_COMPOUNDSTMT") {
+                        compound_stmt = c;
+                    } else {
+                        // Ищем параметры везде
+                        find_params(c);
+                    }
+                }
+
+                // Это функция! Создать метку и сгенерировать тело
+                if (id_node && compound_stmt) {
+                    std::string func_name;
+                    for (auto *id_child: id_node->children) {
+                        if (auto *tn = dynamic_cast<ast::TerminalNode *>(id_child)) {
+                            func_name = tn->value;
+                            break;
+                        }
+                    }
+
+                    if (!func_name.empty()) {
+                        emit_label(func_name);
+
+                        // Извлекаем параметры со стека в обратном порядке
+                        for (int i = param_names.size() - 1; i >= 0; i--) {
+                            Operand param_var(OperandType::VARIABLE, param_names[i]);
+                            emit(Instruction(OpType::POP, param_var));
+                        }
+
+                        generate_stmt(compound_stmt);
+                        // Добавить RET если его нет
+                        if (code.empty() || code.back().op != OpType::RET) {
+                            emit(Instruction(OpType::RET));
+                        }
                     }
                 }
             }
@@ -706,6 +844,59 @@ namespace poliz {
 
                 emit_label(label_end);
                 free_register(cond_reg.reg_num);
+            }
+            return;
+        }
+
+        // FOR statement - for(init; condition; increment) body
+        else if (nodename == "TOK_FORSTMT") {
+            // Get the for statement node
+            auto *for_stmt = dynamic_cast<ast::TOK_FORSTMTNode*>(node);
+            if (for_stmt) {
+                // Execute init - can be a declaration or expression
+                if (for_stmt->tok_for_init) {
+                    std::string nodename = for_stmt->tok_for_init->to_string();
+                    if (nodename == "TOK_LOCALVARDECL") {
+                        // Handle variable declaration in for init
+                        generate_stmt(for_stmt->tok_for_init);
+                    } else {
+                        // Handle expression
+                        generate_expr(for_stmt->tok_for_init);
+                    }
+                }
+
+                std::string label_start = new_label("for_start");
+                std::string label_increment = new_label("for_increment");
+                std::string label_end = new_label("for_end");
+
+                // Start of loop
+                emit_label(label_start);
+
+                // Evaluate condition if it exists
+                if (for_stmt->tok_for_condition) {
+                    Operand cond_reg = generate_expr(for_stmt->tok_for_condition);
+                    // Jump to end if condition is false (== 0)
+                    emit(Instruction(OpType::CMP, cond_reg, Operand(OperandType::IMMEDIATE, "0")));
+                    emit(Instruction(OpType::JE, Operand(OperandType::LABEL, label_end)));
+                    free_register(cond_reg.reg_num);
+                } else {
+                    // No condition = infinite loop (condition always true)
+                }
+
+                // Body of loop
+                if (for_stmt->tok_statement) {
+                    generate_stmt(for_stmt->tok_statement);
+                }
+
+                // Increment
+                emit_label(label_increment);
+                if (for_stmt->tok_for_increment) {
+                    generate_expr(for_stmt->tok_for_increment);
+                }
+                emit(Instruction(OpType::JMP, Operand(OperandType::LABEL, label_start)));
+
+                // End of loop
+                emit_label(label_end);
             }
             return;
         }
@@ -954,6 +1145,12 @@ namespace poliz {
                     break;
                 case OpType::MOV: mnem = "mov";
                     break;
+                case OpType::LEA: mnem = "lea";
+                    break;
+                case OpType::PUSH: mnem = "push";
+                    break;
+                case OpType::POP: mnem = "pop";
+                    break;
                 case OpType::ADD: mnem = "add";
                     break;
                 case OpType::SUB: mnem = "sub";
@@ -978,7 +1175,13 @@ namespace poliz {
                     break;
                 case OpType::NOT: mnem = "not";
                     break;
+                case OpType::SHL: mnem = "shl";
+                    break;
+                case OpType::SHR: mnem = "shr";
+                    break;
                 case OpType::CMP: mnem = "cmp";
+                    break;
+                case OpType::TEST: mnem = "test";
                     break;
                 case OpType::JMP: mnem = "jmp";
                     break;
@@ -1005,6 +1208,10 @@ namespace poliz {
                 case OpType::PRINT: mnem = "print";
                     break;
                 case OpType::INPUT: mnem = "input";
+                    break;
+                case OpType::MEMBER: mnem = "member";
+                    break;
+                case OpType::LABEL: mnem = "label";
                     break;
                 case OpType::HALT: mnem = "halt";
                     break;
