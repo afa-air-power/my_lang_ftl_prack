@@ -1,0 +1,68 @@
+<Program> -> <DeclarationList>
+<id> -> IDENTIFIER <idrest>
+<idrest> -> "." <id> | ε
+<DeclarationList> -> <Declaration> <DeclarationList> | ε
+<Declaration> -> <Type> <id> <DeclSuffix> | <ClassDecl>
+<DeclSuffix> -> "(" <ParamList> ")" <CompoundStmt> | <VarDeclRest> ";"
+<ClassDecl> -> "class" <id> "{" <MemberList> "}" ";"
+<MemberList> -> <Member> <MemberList> | ε
+<Member> -> <Type> <id> <MemberSuffix>
+<MemberSuffix> -> "(" <ParamList> ")" <CompoundStmt> | ";"
+<VarDeclRest> -> "=" <Expression> | ε
+<Type> -> "int" | "float" | "double" | "string" | <id> | "vector" "<" <Type> ">"
+<ParamList> -> <Param> <ParamListRest> | ε
+<ParamListRest> -> "," <Param> <ParamListRest> | ε
+<Param> -> <Type> <id>
+<CompoundStmt> -> "{" <StmtList> "}"
+<StmtList> -> <Statement> <StmtList> | ε
+<Statement> -> <LocalVarDecl> | <IfStmt> | <WhileStmt> | <ReturnStmt> | <ExpressionStmt> | <CompoundStmt> | <ForStmt> | <AfterStmt>
+<ForStmt> -> "for" "(" <Expression> ")" <Statement>
+<AfterStmt> -> "after" <Expression> <LoopStmt>
+<LoopStmt> -> <WhileStmt> | <ForStmt>
+<LocalVarDecl> -> <Type> <id> <VarDeclRest> ";"
+<IfStmt> -> "if" "(" <Expression> ")" <Statement> <ElsePart>
+<ElsePart> -> "else" <Statement> | ε
+<WhileStmt> -> "while" "(" <Expression> ")" <Statement>
+<ReturnStmt> -> "return" <Expression> ";"
+<ExpressionStmt> -> <Expression> ";"
+<Expression> -> <expr01>
+<expr01> -> <expr02> <expr01Rest>
+<expr01Rest> -> "," <expr02> <expr01Rest> | ε
+<expr02> -> <expr03> <expr02Rest>
+<expr02Rest> -> <AssignOp> <expr02> | ε
+<Equal> -> "="
+<AssignOp> -> <Equal> | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | "&=" | " | =" | "^="
+<expr03> -> <expr04> <expr03Rest>
+<expr03Rest> -> "?" <expr02> ":" <expr03> | ε
+<expr04> -> <expr05> <expr04Rest>
+<expr04Rest> -> "or" <expr05> <expr04Rest> | ε
+<expr05> -> <expr06> <expr05Rest>
+<expr05Rest> -> "&&" <expr06> <expr05Rest> | ε
+<expr06> -> <expr07> <expr06Rest>
+<expr06Rest> -> " | | " <expr07> <expr06Rest> | ε
+<expr07> -> <expr08> <expr07Rest>
+<expr07Rest> -> "^" <expr08> <expr07Rest> | ε
+<expr08> -> <expr09> <expr08Rest>
+<expr08Rest> -> "&" <expr09> <expr08Rest> | ε
+<expr09> -> <expr10> <expr09Rest>
+<expr09Rest> -> "==" <expr10> <expr09Rest> | "!=" <expr10> <expr09Rest> | ε
+<expr10> -> <expr11> <expr10Rest>
+<expr10Rest> -> "<" <expr11> <expr10Rest> | ">" <expr11> <expr10Rest> | "<=" <expr11> <expr10Rest> | ">=" <expr11> <expr10Rest> | ε
+<expr11> -> <expr12> <expr11Rest>
+<expr11Rest> -> "<<" <expr12> <expr11Rest> | ">>" <expr12> <expr11Rest> | ε
+<expr12> -> <expr13> <expr12Rest>
+<expr12Rest> -> "+" <expr13> <expr12Rest> | "-" <expr13> <expr12Rest> | ε
+<expr13> -> <expr14> <expr13Rest>
+<expr13Rest> -> "*" <expr14> <expr13Rest> | "/" <expr14> <expr13Rest> | "%" <expr14> <expr13Rest> | ε
+<expr14> -> <UnaryOp> <expr14> | <expr15>
+<UnaryOp> -> "!" | "-" | "++" | "--"
+<expr15> -> <expr16> <expr15Rest>
+<expr15Rest> -> "++" | "--" | ε
+<expr16> -> <Atom> <PostfixTail>
+<Atom> -> <id> | <Literal> | "(" <Expression> ")" | <ino>
+<PostfixTail> -> <postfix_item> <PostfixTail> | ε
+<postfix_item> -> "." <id> | "[" <Expression> "]" | "(" <ArgList> ")"
+<ino> -> "print" "(" <ArgList> ")" | "input" "(" <ArgList> ")"
+<ArgList> -> <Expression> <ArgListRest> | ε
+<ArgListRest> -> "," <Expression> <ArgListRest> | ε
+<Literal> -> NUMBER | STRING

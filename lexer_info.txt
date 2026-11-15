@@ -1,0 +1,34 @@
+LEXER DUMP (on parse error)
+=============================
+Error at cmake-build-debug/test_cases/test_13_if_statement.txt:4:16
+Current token: TOK_LBRACE = '{'
+
+Type: IDENTIFIER, Name: int, Value: int, Line: 1, Col: 1
+Type: IDENTIFIER, Name: main, Value: main, Line: 1, Col: 5
+Type: TOK_LPAREN, Name: (, Value: (, Line: 1, Col: 9
+Type: TOK_RPAREN, Name: ), Value: ), Line: 1, Col: 10
+Type: TOK_LBRACE, Name: {, Value: {, Line: 1, Col: 12
+Type: IDENTIFIER, Name: int, Value: int, Line: 2, Col: 5
+Type: IDENTIFIER, Name: x, Value: x, Line: 2, Col: 9
+Type: TOK_SEMICOLON, Name: ;, Value: ;, Line: 2, Col: 10
+Type: IDENTIFIER, Name: x, Value: x, Line: 3, Col: 5
+Type: TOK_EQUAL, Name: =, Value: =, Line: 3, Col: 7
+Type: NUMBER, Name: 5, Value: 5, Line: 3, Col: 9
+Type: TOK_SEMICOLON, Name: ;, Value: ;, Line: 3, Col: 10
+Type: IDENTIFIER, Name: if, Value: if, Line: 4, Col: 5
+Type: TOK_LPAREN, Name: (, Value: (, Line: 4, Col: 8
+Type: IDENTIFIER, Name: x, Value: x, Line: 4, Col: 9
+Type: TOK_GT, Name: >, Value: >, Line: 4, Col: 11
+Type: NUMBER, Name: 3, Value: 3, Line: 4, Col: 13
+Type: TOK_RPAREN, Name: ), Value: ), Line: 4, Col: 14
+Type: TOK_LBRACE, Name: {, Value: {, Line: 4, Col: 16
+Type: IDENTIFIER, Name: x, Value: x, Line: 5, Col: 9
+Type: TOK_EQUAL, Name: =, Value: =, Line: 5, Col: 11
+Type: NUMBER, Name: 10, Value: 10, Line: 5, Col: 13
+Type: TOK_SEMICOLON, Name: ;, Value: ;, Line: 5, Col: 15
+Type: TOK_RBRACE, Name: }, Value: }, Line: 6, Col: 5
+Type: IDENTIFIER, Name: return, Value: return, Line: 7, Col: 6
+Type: NUMBER, Name: 0, Value: 0, Line: 7, Col: 13
+Type: TOK_SEMICOLON, Name: ;, Value: ;, Line: 7, Col: 14
+Type: TOK_RBRACE, Name: }, Value: }, Line: 8, Col: 1
+Type: EOF, Name: EOF, Value: , Line: 8, Col: 2
